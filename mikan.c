@@ -29,6 +29,7 @@ typedef struct Node {
 Node *expr();
 Node *mul();
 Node *term();
+Node *unary();
 
 Node *new_node(int ty, Node *lhs, Node *rhs) {
     Node *node = malloc(sizeof(Node));
@@ -90,13 +91,13 @@ Node *term() {
 }
 
 Node *mul() {
-    Node *node = term();
+    Node *node = unary();
 
     for (;;) {
         if (consume('*'))
-            node = new_node('*', node, term());
+            node = new_node('*', node, unary());
         else if (consume('/'))
-            node = new_node('/', node, term());
+            node = new_node('/', node, unary());
         else
             return node;
     }
@@ -113,6 +114,14 @@ Node *expr() {
         else
             return node;
     }
+}
+
+Node *unary() {
+    if (consume('+')) 
+        return term();
+    if (consume('-')) 
+        return new_node('-', new_node_num(0), term());
+    return term();
 }
 
 void gen(Node *node) {
