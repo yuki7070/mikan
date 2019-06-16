@@ -143,6 +143,8 @@ Node *equality() {
     for (;;) {
         if (consume(TK_EQ))
             node = new_node(TK_EQ, node, relational());
+        else if (consume(TK_NE))
+            node = new_node(TK_NE, node, relational());
         else
             return node;
     }
@@ -185,6 +187,11 @@ void gen(Node *node) {
         printf("    sete al\n");
         printf("    movzb rax, al\n");
         break;
+    case TK_NE:
+        printf("    cmp rax, rdi\n");
+        printf("    setne al\n");
+        printf("    movzb rax, al\n");
+        break;
     }
 
     printf("    push rax\n");
@@ -201,7 +208,17 @@ void tokenize() {
         }
 
         if (*p == '=' && *(p+1) == '=') {
+            //演算子==の実装
             tokens[i].ty = TK_EQ;
+            tokens[i].input = p;
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (*p == '!' && *(p+1) == '=') {
+            //演算子!=の実装
+            tokens[i].ty = TK_NE;
             tokens[i].input = p;
             i++;
             p += 2;
