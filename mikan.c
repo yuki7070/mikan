@@ -21,6 +21,10 @@ typedef struct {
 
 enum {
     ND_NUM = 256,
+    ND_EQ,
+    ND_NE,
+    ND_LE,
+    ND_GE,
 };
 
 typedef struct Node {
@@ -134,6 +138,19 @@ Node *add() {
 Node *relational() {
     Node *node = add();
 
+    for (;;) {
+        if (consume('<'))
+            node = new_node('<', node, add());
+        else if (consume('>'))
+            node = new_node('>', node, add());
+        else if (consume(TK_LE))
+            node = new_node(ND_LE, node, add());
+        else if (consume(TK_GE))
+            node = new_node(ND_GE, node, add());
+        else
+            return node;
+    }
+
     return node;
 }
 
@@ -142,9 +159,9 @@ Node *equality() {
 
     for (;;) {
         if (consume(TK_EQ))
-            node = new_node(TK_EQ, node, relational());
+            node = new_node(ND_EQ, node, relational());
         else if (consume(TK_NE))
-            node = new_node(TK_NE, node, relational());
+            node = new_node(ND_NE, node, relational());
         else
             return node;
     }
@@ -182,14 +199,34 @@ void gen(Node *node) {
         printf("    cqo\n");
         printf("    idiv rdi\n");
         break;
-    case TK_EQ:
+    case ND_EQ:
         printf("    cmp rax, rdi\n");
         printf("    sete al\n");
         printf("    movzb rax, al\n");
         break;
-    case TK_NE:
+    case ND_NE:
         printf("    cmp rax, rdi\n");
         printf("    setne al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case ND_LE:
+        printf("    cmp rax, rdi\n");
+        printf("    setle al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case '<':
+        printf("    cmp rax, rdi\n");
+        printf("    setl al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case ND_GE:
+        printf("    cmp rdi, rax\n");
+        printf("    setle al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case '>':
+        printf("    cmp rdi, rax\n");
+        printf("    setl al\n");
         printf("    movzb rax, al\n");
         break;
     }
@@ -225,7 +262,25 @@ void tokenize() {
             continue;
         }
 
-        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
+        if (*p == '<' && *(p+1) == '=') {
+            //演算子<=の実装
+            tokens[i].ty = TK_LE;
+            tokens[i].input = p;
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (*p == '>' && *(p+1) == '=') {
+            //演算子>=の実装
+            tokens[i].ty = TK_GE;
+            tokens[i].input = p;
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
             tokens[i].ty = *p;
             tokens[i].input = p;
             i++;
