@@ -6,6 +6,10 @@
 
 enum {
     TK_NUM = 256,
+    TK_EQ,
+    TK_NE,
+    TK_LE,
+    TK_GE,
     TK_EOF,
 };
 
@@ -27,6 +31,9 @@ typedef struct Node {
 } Node;
 
 Node *expr();
+Node *equality();
+Node *relational();
+Node *add();
 Node *mul();
 Node *term();
 Node *unary();
@@ -90,6 +97,14 @@ Node *term() {
     exit(1);
 }
 
+Node *unary() {
+    if (consume('+'))
+        return term();
+    if (consume('-'))
+        return new_node('-', new_node_num(0), term());
+    return term();
+}
+
 Node *mul() {
     Node *node = unary();
 
@@ -103,7 +118,7 @@ Node *mul() {
     }
 }
 
-Node *expr() {
+Node *add() {
     Node *node = mul();
 
     for (;;) {
@@ -116,12 +131,27 @@ Node *expr() {
     }
 }
 
-Node *unary() {
-    if (consume('+')) 
-        return term();
-    if (consume('-')) 
-        return new_node('-', new_node_num(0), term());
-    return term();
+Node *relational() {
+    Node *node = add();
+
+    return node;
+}
+
+Node *equality() {
+    Node *node = relational();
+
+    for (;;) {
+        if (consume(TK_EQ))
+            node = new_node(TK_EQ, node, relational());
+        else
+            return node;
+    }
+}
+
+Node *expr() {
+    Node *node = equality();
+
+    return node;
 }
 
 void gen(Node *node) {
@@ -149,6 +179,12 @@ void gen(Node *node) {
     case '/':
         printf("    cqo\n");
         printf("    idiv rdi\n");
+        break;
+    case TK_EQ:
+        printf("    cmp rax, rdi\n");
+        printf("    sete al\n");
+        printf("    movzb rax, al\n");
+        break;
     }
 
     printf("    push rax\n");
@@ -161,6 +197,14 @@ void tokenize() {
     while (*p) {
         if (isspace(*p)) {
             p++;
+            continue;
+        }
+
+        if (*p == '=' && *(p+1) == '=') {
+            tokens[i].ty = TK_EQ;
+            tokens[i].input = p;
+            i++;
+            p += 2;
             continue;
         }
 
