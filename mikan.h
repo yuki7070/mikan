@@ -6,11 +6,11 @@ typedef struct {
     int len;
 } Vector;
 
-
 Vector *tokens;
 Vector *new_vector();
 void vec_push(Vector *vec, void *elem);
 
+void error(char *fmt, ...);
 void error_at(char *loc, char *msg);
 
 void runtest();
