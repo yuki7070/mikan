@@ -42,6 +42,38 @@ Node *mul();
 Node *term();
 Node *unary();
 
+typedef struct {
+    void **data;
+    int capacity;
+    int len;
+} Vector;
+
+Vector *tokens;
+
+Vector *new_vector() {
+    Vector *vec = malloc(sizeof(Vector));
+    vec->data = malloc(sizeof(void *) * 16);
+    vec->capacity = 16;
+    vec->len = 0;
+    return vec;
+}
+
+void vec_push(Vector *vec, void *elem) {
+    if (vec->capacity == vec->len) {
+        vec->capacity *= 2;
+        vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
+    }
+    vec->data[vec->len++] = elem;
+}
+
+Token *add_token(Vector *vec, int ty, char *input) {
+    Token *t = malloc(sizeof(Token));
+    t->ty = ty;
+    t->input = input;
+    vec_push(vec, t);
+    return t;
+}
+
 Node *new_node(int ty, Node *lhs, Node *rhs) {
     Node *node = malloc(sizeof(Node));
     node->ty = ty;
@@ -61,8 +93,6 @@ char *user_input;
 
 int pos = 0;
 
-Token tokens[100];
-
 void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -80,24 +110,30 @@ void error_at(char *loc, char *msg) {
 }
 
 int consume(int ty) {
-    if (tokens[pos].ty != ty)
+    Token *t = tokens->data[pos];
+
+    if (t->ty != ty)
         return 0;
     pos++;
     return 1;
 }
 
 Node *term() {
+    Token *t = tokens->data[pos];
+
     if (consume('(')) {
         Node *node = expr();
         if (!consume(')'))
-            error_at(tokens[pos].input, "開き括弧に対応する閉じ括弧がありません");
+            error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
         return node;
     }
 
-    if (tokens[pos].ty == TK_NUM)
-        return new_node_num(tokens[pos++].val);
+    if (t->ty == TK_NUM) {
+        pos++;
+        return new_node_num(t->val);
+    }
     
-    error_at(tokens[pos].input, "数値でも開き括弧でもないトークンです");
+    error_at(t->input, "数値でも開き括弧でもないトークンです");
     exit(1);
 }
 
@@ -234,7 +270,8 @@ void gen(Node *node) {
     printf("    push rax\n");
 }
 
-void tokenize() {
+Vector *tokenize() {
+    Vector *tokens = new_vector();
     char *p = user_input;
 
     int i = 0;
@@ -246,8 +283,7 @@ void tokenize() {
 
         if (*p == '=' && *(p+1) == '=') {
             //演算子==の実装
-            tokens[i].ty = TK_EQ;
-            tokens[i].input = p;
+            add_token(tokens, TK_EQ, p);
             i++;
             p += 2;
             continue;
@@ -255,8 +291,7 @@ void tokenize() {
 
         if (*p == '!' && *(p+1) == '=') {
             //演算子!=の実装
-            tokens[i].ty = TK_NE;
-            tokens[i].input = p;
+            add_token(tokens, TK_NE, p);
             i++;
             p += 2;
             continue;
@@ -264,8 +299,7 @@ void tokenize() {
 
         if (*p == '<' && *(p+1) == '=') {
             //演算子<=の実装
-            tokens[i].ty = TK_LE;
-            tokens[i].input = p;
+            add_token(tokens, TK_LE, p);
             i++;
             p += 2;
             continue;
@@ -273,25 +307,22 @@ void tokenize() {
 
         if (*p == '>' && *(p+1) == '=') {
             //演算子>=の実装
-            tokens[i].ty = TK_GE;
-            tokens[i].input = p;
+            add_token(tokens, TK_GE, p);
             i++;
             p += 2;
             continue;
         }
 
         if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>') {
-            tokens[i].ty = *p;
-            tokens[i].input = p;
+            add_token(tokens, *p, p);
             i++;
             p++;
             continue;
         }
 
         if (isdigit(*p)) {
-            tokens[i].ty = TK_NUM;
-            tokens[i].input = p;
-            tokens[i].val = strtol(p, &p, 10);
+            Token *t = add_token(tokens, TK_NUM, p);
+            t->val = strtol(p, &p, 10);
             i++;
             continue;
         }
@@ -299,8 +330,32 @@ void tokenize() {
         error_at(p, "トークナイズできません");
     }
     
-    tokens[i].ty = TK_EOF;
-    tokens[i].input = p;
+    add_token(tokens, TK_EOF, p);
+
+    return tokens;
+}
+
+//test
+void expect(int line, int expected, int actual) {
+    if (expected == actual)
+        return;
+    fprintf(stderr, "%d: %d expected, but got %d\n", line, expected, actual);
+    exit(1);
+}
+
+void runtest() {
+    Vector *vec = new_vector();
+    expect(__LINE__, 0, vec->len);
+
+    for (int i = 0; i < 100; i++)
+        vec_push(vec, (void *)i);
+
+    expect(__LINE__, 100, vec->len);
+    expect(__LINE__, 0, (long)vec->data[0]);
+    expect(__LINE__, 50, (long)vec->data[50]);
+    expect(__LINE__, 99, (long)vec->data[99]);
+
+    printf("OK\n");
 }
 
 int main(int argc, char **argv) {
@@ -310,7 +365,14 @@ int main(int argc, char **argv) {
     }
 
     user_input = argv[1];
-    tokenize();
+
+    if (strcmp(user_input, "-test") == 0) {
+        runtest();
+        return 0;
+    }
+
+    tokens = tokenize();
+
     Node *node = expr();
 
     printf(".intel_syntax noprefix\n");
