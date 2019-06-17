@@ -21,17 +21,22 @@ typedef struct Node {
     struct Node *lhs;
     struct Node *rhs;
     int val;
+    int offset;
 } Node;
 
 enum {
     ND_NUM = 256,
+    ND_RETURN,
+    ND_LVAR,
     ND_EQ,
     ND_NE,
     ND_LE,
     ND_GE,
 };
 
-Node *expr();
+Node *code[100];
+
+void program();
 void gen(Node *node);
 
 
@@ -43,6 +48,8 @@ typedef struct {
 
 enum {
     TK_NUM = 256,
+    TK_RETURN,
+    TK_IDENT,
     TK_EQ,
     TK_NE,
     TK_LE,

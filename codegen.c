@@ -4,6 +4,9 @@
 
 int pos = 0;
 
+Node *stmt();
+Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();
@@ -35,9 +38,42 @@ Node *new_node_num(int val) {
     return node;
 }
 
+void program() {
+    int i = 0;
+    while (!consume(TK_EOF)) {
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
+    return;
+}
+
+Node *stmt() {
+    Node *node;
+
+    if (consume(TK_RETURN)) {
+        node = malloc(sizeof(Node));
+        node->ty = ND_RETURN;
+        node->lhs = expr();
+    } else {
+        node = expr();
+    }
+
+    Token *t = tokens->data[pos];
+
+    if (!consume(';'))
+        error_at(t->input, "';'ではないトークンです");
+    return node;
+}
+
 Node *expr() {
+    return assign();
+}
+
+Node *assign() {
     Node *node = equality();
 
+    if (consume('='))
+        node = new_node('=', node, assign());
     return node;
 }
 
@@ -122,14 +158,61 @@ Node *term() {
         pos++;
         return new_node_num(t->val);
     }
+
+    if (t->ty == TK_IDENT) {
+        char varname = t->input[0];
+
+        Node *node = malloc(sizeof(Node));
+        node->ty = ND_LVAR;
+        node->offset = (varname - 'a' + 1) * 8;
+        pos++;
+        return node;
+    }
     
     error_at(t->input, "数値でも開き括弧でもないトークンです");
     exit(1);
 }
 
+void gen_lval(Node *node) {
+    if (node->ty != ND_LVAR)
+        error("代入の左辺値が変数ではありません");
+
+    printf("    mov rax, rbp\n");
+    printf("    sub rax, %d\n", node->offset);
+    printf("    push rax\n");
+}
+
 void gen(Node *node) {
+    if (node->ty == ND_RETURN) {
+        gen(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rsp, rbp\n");
+        printf("    pop rbp\n");
+        printf("    ret\n");
+        return;
+    }
+
     if (node->ty == ND_NUM) {
         printf("    push %d\n", node->val);
+        return;
+    }
+
+    if (node->ty == ND_LVAR) {
+        gen_lval(node);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+        return;
+    }
+
+    if (node->ty == '=') {
+        gen_lval(node->lhs);
+        gen(node->rhs);
+
+        printf("    pop rdi\n");
+        printf("    pop rax\n");
+        printf("    mov [rax], rdi\n");
+        printf("    push rdi\n");
         return;
     }
 
