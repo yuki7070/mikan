@@ -21,5 +21,7 @@ try 14 "a = 3; b = 5 * 6 - 8; return a + b /2;"
 try 10 "ab = 2; ab = 10; return ab;"
 try 5 "return 5;"
 try 5 "ab = 10; if (ab > 5) ab = 5; return ab;"
+try 5 "ab = 3; if (4 > 5) return ab; else return 5;"
+try 4 "ab = 2; if (5 == 5) return 4; else return ab;"
 
 echo OK

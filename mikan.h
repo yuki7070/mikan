@@ -36,6 +36,7 @@ typedef struct Node {
 
     struct Node *cond;
     struct Node *then;
+    struct Node *els;
 } Node;
 
 enum {

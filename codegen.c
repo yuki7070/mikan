@@ -84,6 +84,10 @@ Node *stmt() {
 
         node->then = stmt();
 
+        if (consume(TK_ELSE)) {
+            node->els = stmt();
+        }
+
     } else {
         node = expr();
 
@@ -231,10 +235,17 @@ void gen(Node *node) {
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je  .Lend%d\n", jump_count);
+        if (node->els) {
+            printf("    je  .Lelse%d\n", jump_count);
+        }
         gen(node->then);
-        printf(".Lend%d:\n", jump_count);
-        jump_count++;
+        printf("    je  .Lend%d\n", jump_count+1);
+        if (node->els) {
+            printf(".Lelse%d:\n", jump_count);
+            gen(node->els);
+        }
+        printf(".Lend%d:\n", jump_count+1);
+        jump_count += 2;
         return;
     }
 
