@@ -84,6 +84,34 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "if", 2) == 0 && !is_alnum(p[2])) {
+            add_token(tokens, TK_IF, p);
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (strncmp(p, "else", 4) == 0 && !is_alnum(p[4])) {
+            add_token(tokens, TK_ELSE, p);
+            i++;
+            p += 4;
+            continue;
+        }
+
+        if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
+            add_token(tokens, TK_WHILE, p);
+            i++;
+            p += 5;
+            continue;
+        }
+
+        if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
+            add_token(tokens, TK_FOR, p);
+            i++;
+            p += 3;
+            continue;
+        }
+
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
             add_token(tokens, TK_RETURN, p);
             i++;

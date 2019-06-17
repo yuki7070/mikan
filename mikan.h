@@ -33,12 +33,19 @@ typedef struct Node {
     struct Node *rhs;
     int val;
     int offset;
+
+    struct Node *cond;
+    struct Node *then;
 } Node;
 
 enum {
     ND_NUM = 256,
     ND_RETURN,
     ND_LVAR,
+    ND_IF,
+    ND_ELSE,
+    ND_WHILE,
+    ND_FOR,
     ND_EQ,
     ND_NE,
     ND_LE,
@@ -62,6 +69,10 @@ enum {
     TK_NUM = 256,
     TK_RETURN,
     TK_IDENT,
+    TK_IF,
+    TK_ELSE,
+    TK_WHILE,
+    TK_FOR,
     TK_EQ,
     TK_NE,
     TK_LE,

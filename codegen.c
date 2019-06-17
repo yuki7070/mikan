@@ -6,6 +6,8 @@
 int pos = 0;
 int count = 0;
 
+int jump_count = 0;
+
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -59,18 +61,36 @@ void program() {
 Node *stmt() {
     Node *node;
 
+    Token *t = tokens->data[pos];
+
     if (consume(TK_RETURN)) {
         node = malloc(sizeof(Node));
         node->ty = ND_RETURN;
         node->lhs = expr();
+
+        if (!consume(';'))
+            error_at(t->input, "';'ではないトークンです");
+
+    } else if (consume(TK_IF)) {
+        if (!consume('('))
+            error_at(t->input, "if文の'('がありません");
+
+        node = malloc(sizeof(Node));
+        node->ty = ND_IF;
+        node->cond = expr();
+
+        if (!consume(')'))
+            error_at(t->input, "if文の')'がありません");
+
+        node->then = stmt();
+
     } else {
         node = expr();
+
+        if (!consume(';'))
+            error_at(t->input, "';'ではないトークンです");
     }
 
-    Token *t = tokens->data[pos];
-
-    if (!consume(';'))
-        error_at(t->input, "';'ではないトークンです");
     return node;
 }
 
@@ -204,6 +224,17 @@ void gen(Node *node) {
         printf("    mov rsp, rbp\n");
         printf("    pop rbp\n");
         printf("    ret\n");
+        return;
+    }
+
+    if (node->ty == ND_IF) {
+        gen(node->cond);
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je  .Lend%d\n", jump_count);
+        gen(node->then);
+        printf(".Lend%d:\n", jump_count);
+        jump_count++;
         return;
     }
 
