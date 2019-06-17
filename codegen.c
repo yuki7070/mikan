@@ -88,6 +88,19 @@ Node *stmt() {
             node->els = stmt();
         }
 
+    } else if (consume(TK_WHILE)) {
+        if (!consume('('))
+            error_at(t->input, "while文の'('がありません");
+
+        node = malloc(sizeof(Node));
+        node->ty = ND_WHILE;
+        node->cond = expr();
+
+        if (!consume(')'))
+            error_at(t->input, "while文の')'がありません");
+
+        node->loop = stmt();
+
     } else {
         node = expr();
 
@@ -244,6 +257,19 @@ void gen(Node *node) {
             printf(".Lelse%d:\n", jump_count);
             gen(node->els);
         }
+        printf(".Lend%d:\n", jump_count+1);
+        jump_count += 2;
+        return;
+    }
+
+    if (node->ty == ND_WHILE) {
+        printf(".Lbegin%d:\n", jump_count);
+        gen(node->cond);
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je  .Lend%d\n", jump_count+1);
+        gen(node->loop);
+        printf("    jmp .Lbegin%d\n", jump_count);
         printf(".Lend%d:\n", jump_count+1);
         jump_count += 2;
         return;

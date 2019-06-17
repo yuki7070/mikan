@@ -34,9 +34,14 @@ typedef struct Node {
     int val;
     int offset;
 
+    //if (cond) then else els
+    //while (cond) loop
     struct Node *cond;
     struct Node *then;
     struct Node *els;
+
+    struct Node *loop;
+    
 } Node;
 
 enum {
