@@ -15,6 +15,17 @@ void error_at(char *loc, char *msg);
 
 void runtest();
 
+typedef struct {
+    Vector *keys;
+    Vector *vals;
+} Map;
+
+Map *identities;
+Map *new_map();
+void map_put(Map *map, char *key, void *val);
+void *map_get(Map *map, char *key);
+int map_exists(Map *map, char *key);
+
 
 typedef struct Node {
     int ty;
@@ -43,6 +54,7 @@ void gen(Node *node);
 typedef struct {
     int ty;
     int val;
+    char *name;
     char *input;
 } Token;
 

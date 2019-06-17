@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "mikan.h"
 
 int pos = 0;
+int count = 0;
 
 Node *stmt();
 Node *expr();
@@ -35,6 +37,13 @@ Node *new_node_num(int val) {
     Node *node = malloc(sizeof(Node));
     node->ty = ND_NUM;
     node->val = val;
+    return node;
+}
+
+Node *new_node_ident(int offset) {
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_LVAR;
+    node->offset = offset;
     return node;
 }
 
@@ -160,12 +169,18 @@ Node *term() {
     }
 
     if (t->ty == TK_IDENT) {
-        char varname = t->input[0];
+        if (map_exists(identities, t->name) == 1) {
+            int offset = (int)map_get(identities, t->name);
+            Node *node = new_node_ident(offset);
+            pos++;
+            return node;
+        }
 
-        Node *node = malloc(sizeof(Node));
-        node->ty = ND_LVAR;
-        node->offset = (varname - 'a' + 1) * 8;
+        int offset = (count + 1) * 8;
+        Node *node = new_node_ident(offset);
+        map_put(identities, t->name, offset);
         pos++;
+        count++;
         return node;
     }
     

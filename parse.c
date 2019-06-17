@@ -11,8 +11,20 @@ Token *add_token(Vector *vec, int ty, char *input) {
     return t;
 }
 
+char *strndup(const char *s, size_t n) {
+    char *p = memchr(s, '\0', n);
+    if (p != NULL)
+        n = p - s;
+    p = malloc(n + 1);
+    if (p != NULL) {
+        memcpy(p, s, n);
+        p[n] = '\0';
+    }
+    return p;
+}
+
 int is_alnum(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || (c == '_');
+    return isalpha(c) || isdigit(c) || (c == '_');
 }
 
 Vector *tokenize() {
@@ -58,7 +70,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')' || *p == '<' || *p == '>' || *p == '=' || *p == ';') {
+        if (strchr("+-*/()<>=;", *p)) {
             add_token(tokens, *p, p);
             i++;
             p++;
@@ -79,10 +91,16 @@ Vector *tokenize() {
             continue;
         }
 
-        if ('a' <= *p && *p <= 'z') {
-            add_token(tokens, TK_IDENT, p);
+        if (isalpha(*p) || *p == '_') {
+            int j = 1;
+            while (is_alnum(p[j]))
+                j++;
+            
+            Token *t = add_token(tokens, TK_IDENT, p);
+            char *name = strndup(p, j);
+            t->name = name;
             i++;
-            p++;
+            p += j;
             continue;
         }
 
