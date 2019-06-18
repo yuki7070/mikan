@@ -50,6 +50,7 @@ typedef struct Node {
     struct Vector *block;
 
     char *name;
+    struct Vector *args;
 } Node;
 
 enum {

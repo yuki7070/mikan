@@ -260,24 +260,29 @@ Node *term() {
 
     if (consume('(')) {
         Node *node = expr();
-        if (!consume(')'))
+        if (!consume(')')) {
+            //Token *t = tokens->data[pos];
             error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
+        }
         return node;
     }
 
     if (consume(TK_NUM)) {
+        //Token *t = tokens->data[pos];
         return new_node_num(t->val);
     }
 
     if (consume(TK_IDENT)) {
+        
         if (consume('(')) {
             Node *node = malloc(sizeof(Node));
             node->ty = ND_FUNC;
             node->name = t->name;
+            node->args = new_vector();
 
-            if (!consume(')')) {
-                Token *t = tokens->data[pos];
-                error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
+            while (!consume(')')) {
+                vec_push(node->args, term());
+                consume(',');
             }
 
             return node;
@@ -296,6 +301,7 @@ Node *term() {
         return node;
     }
     
+    //Token *t = tokens->data[pos];
     error_at(t->input, "数値でも開き括弧でもないトークンです");
     exit(1);
 }
@@ -384,6 +390,30 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_FUNC) {
+        Vector *args = node->args;
+        for (int j = args->len -1; j >= 0; j--) {
+            Node *n = args->data[j];
+            switch (j) {
+            case 0:
+                printf("    mov rdi, %d\n", n->val);
+                break;
+            case 1:
+                printf("    mov rsi, %d\n", n->val);
+                break;
+            case 2:
+                printf("    mov rdx, %d\n", n->val);
+                break;
+            case 3:
+                printf("    mov rcx, %d\n", n->val);
+                break;
+            case 4:
+                printf("    mov r8, %d\n", n->val);
+                break;
+            case 5:
+                printf("    mov r9, %d\n", n->val);
+                break;
+            }
+        }
         printf("    call %s\n", node->name);
         return;
     }
