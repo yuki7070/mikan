@@ -391,26 +391,29 @@ void gen(Node *node) {
 
     if (node->ty == ND_FUNC) {
         Vector *args = node->args;
-        for (int j = args->len -1; j >= 0; j--) {
-            Node *n = args->data[j];
+        for (int j = 0; j < args->len; j++) {
+            gen(args->data[j]);
+        }
+        for (int j = args->len - 1; j >= 0; j--) {
+            printf("    pop rax\n");
             switch (j) {
             case 0:
-                printf("    mov rdi, %d\n", n->val);
+                printf("    mov rdi, rax\n");
                 break;
             case 1:
-                printf("    mov rsi, %d\n", n->val);
+                printf("    mov rsi, rax\n");
                 break;
             case 2:
-                printf("    mov rdx, %d\n", n->val);
+                printf("    mov rdx, rax\n");
                 break;
             case 3:
-                printf("    mov rcx, %d\n", n->val);
+                printf("    mov rcx, rax\n");
                 break;
             case 4:
-                printf("    mov r8, %d\n", n->val);
+                printf("    mov r8, rax\n");
                 break;
             case 5:
-                printf("    mov r9, %d\n", n->val);
+                printf("    mov r9, rax\n");
                 break;
             }
         }
