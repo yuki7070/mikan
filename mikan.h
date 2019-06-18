@@ -36,12 +36,17 @@ typedef struct Node {
 
     //if (cond) then else els
     //while (cond) loop
+    //for (init; cond; inc) loop
     struct Node *cond;
     struct Node *then;
     struct Node *els;
 
     struct Node *loop;
-    
+
+    struct Node *init;
+    struct Node *inc;
+
+    struct Vector *block;
 } Node;
 
 enum {
@@ -52,6 +57,7 @@ enum {
     ND_ELSE,
     ND_WHILE,
     ND_FOR,
+    ND_BLOCK,
     ND_EQ,
     ND_NE,
     ND_LE,
@@ -62,6 +68,8 @@ Node *code[100];
 
 void program();
 void gen(Node *node);
+
+int count;
 
 
 typedef struct {

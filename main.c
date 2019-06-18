@@ -15,6 +15,8 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    count = 0;
+
     identities = new_map();
 
     tokens = tokenize();
@@ -27,7 +29,7 @@ int main(int argc, char **argv) {
 
     printf("    push rbp\n");
     printf("    mov rbp, rsp\n");
-    printf("    sub rsp, 208\n");
+    printf("    sub rsp, %d\n", count * 8);
 
     for (int i = 0; code[i]; i++) {
         gen(code[i]);

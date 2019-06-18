@@ -4,7 +4,6 @@
 #include "mikan.h"
 
 int pos = 0;
-int count = 0;
 
 int jump_count = 0;
 
@@ -61,51 +60,117 @@ void program() {
 Node *stmt() {
     Node *node;
 
-    Token *t = tokens->data[pos];
-
     if (consume(TK_RETURN)) {
         node = malloc(sizeof(Node));
         node->ty = ND_RETURN;
         node->lhs = expr();
 
-        if (!consume(';'))
+        if (!consume(';')) {
+            Token *t = tokens->data[pos];
             error_at(t->input, "';'ではないトークンです");
+        }
 
-    } else if (consume(TK_IF)) {
-        if (!consume('('))
+        return node;
+    }
+
+    if (consume(TK_IF)) {
+        if (!consume('(')) {
+            Token *t = tokens->data[pos];
             error_at(t->input, "if文の'('がありません");
+        }
 
         node = malloc(sizeof(Node));
         node->ty = ND_IF;
         node->cond = expr();
 
-        if (!consume(')'))
+        if (!consume(')')) {
+            Token *t = tokens->data[pos];
             error_at(t->input, "if文の')'がありません");
+        }
 
         node->then = stmt();
 
-        if (consume(TK_ELSE)) {
+        if (consume(TK_ELSE))
             node->els = stmt();
-        }
 
-    } else if (consume(TK_WHILE)) {
-        if (!consume('('))
+        return node;
+    }
+    
+    if (consume(TK_WHILE)) {
+        if (!consume('(')) {
+            Token *t = tokens->data[pos];
             error_at(t->input, "while文の'('がありません");
+        }
 
         node = malloc(sizeof(Node));
         node->ty = ND_WHILE;
         node->cond = expr();
 
-        if (!consume(')'))
+        if (!consume(')')) {
+            Token *t = tokens->data[pos];
             error_at(t->input, "while文の')'がありません");
+        }
 
         node->loop = stmt();
 
-    } else {
-        node = expr();
+        return node;
+    }
 
-        if (!consume(';'))
-            error_at(t->input, "';'ではないトークンです");
+    if (consume(TK_FOR)) {
+        if (!consume('(')) {
+            Token *t = tokens->data[pos];
+            error_at(t->input, "for文の'('がありません");
+        }
+
+        node = malloc(sizeof(Node));
+        node->ty = ND_FOR;
+
+        if (!consume(';')) {
+            node->init = expr();
+            if (!consume(';')) {
+                Token *t = tokens->data[pos];
+                error_at(t->input, "for文の';'がありません");
+            }
+        }
+    
+        if (!consume(';')) {
+            node->cond = expr();
+            if (!consume(';')) {
+                Token *t = tokens->data[pos];
+                error_at(t->input, "for文の';'がありません");
+            }
+        }
+
+        if (!consume(')')) {
+            node->inc = expr();
+            if (!consume(')')) {
+                Token *t = tokens->data[pos];
+                error_at(t->input, "for文の')'がありません");
+            }
+        }
+
+        node->loop = stmt();
+
+        return node;
+    }
+
+    if (consume('{')) {
+        node = malloc(sizeof(Node));
+        node->ty = ND_BLOCK;
+        node->block = new_vector();
+
+        while (!consume('}')) {
+            vec_push(node->block, stmt());
+        }
+
+        return node;
+    }
+
+    node = expr();
+
+    if (!consume(';')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "';'ではないトークンです");
     }
 
     return node;
@@ -245,33 +310,67 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_IF) {
+        int j1 = jump_count++;
+        int j2 = jump_count++;
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
         if (node->els) {
-            printf("    je  .Lelse%d\n", jump_count);
+            printf("    je  .Lelse%d\n", j1);
         }
         gen(node->then);
-        printf("    je  .Lend%d\n", jump_count+1);
+        printf("    je  .Lend%d\n", j2);
         if (node->els) {
-            printf(".Lelse%d:\n", jump_count);
+            printf(".Lelse%d:\n", j1);
             gen(node->els);
         }
-        printf(".Lend%d:\n", jump_count+1);
-        jump_count += 2;
+        printf(".Lend%d:\n", j2);
         return;
     }
 
     if (node->ty == ND_WHILE) {
-        printf(".Lbegin%d:\n", jump_count);
+        int j1 = jump_count++;
+        int j2 = jump_count++;
+        printf(".Lbegin%d:\n", j1);
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je  .Lend%d\n", jump_count+1);
+        printf("    je  .Lend%d\n", j2);
         gen(node->loop);
-        printf("    jmp .Lbegin%d\n", jump_count);
-        printf(".Lend%d:\n", jump_count+1);
-        jump_count += 2;
+        printf("    jmp .Lbegin%d\n", j1);
+        printf(".Lend%d:\n", j2);
+        return;
+    }
+
+    if (node->ty == ND_FOR) {
+        if (node->init) {
+            gen(node->init);
+        }
+        int j1 = jump_count++;
+        int j2 = jump_count++;
+        printf(".Lbegin%d:\n", j1);
+        if (node->cond) {
+            gen(node->cond);
+            printf("    pop rax\n");
+            printf("    cmp rax, 0\n");
+            printf("    je  .Lend%d\n", j2);
+        }
+        gen(node->loop);
+
+        if (node->inc) {
+            gen(node->inc);
+        }
+        printf("    jmp .Lbegin%d\n", j1);
+        printf(".Lend%d:\n", j2);
+        return;
+    }
+
+    if (node->ty == ND_BLOCK) {
+        Vector *block = node->block;
+        for (int j = 0; j < block->len; j++) {
+            gen(block->data[j]);
+            //printf("    pop rax\n");
+        }
         return;
     }
 

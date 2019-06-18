@@ -70,7 +70,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;", *p)) {
+        if (strchr("+-*/()<>=;{}", *p)) {
             add_token(tokens, *p, p);
             i++;
             p++;
