@@ -27,6 +27,7 @@ try 5 "a = 0; while (a < 5) a = a + 1; if (a == 5) return a;"
 try 5 "a = 2; a = a + 3; return a;"
 try 5 "a = 0; for (a = 0; a < 5; a = a + 1) {} return a;"
 try 5 "a = 3; if (10 > 5) { a = 5; } return a;"
-try 20 "a = 10; for (i = 0; i < 5; i = i + 1) { a = a + i; } return a;"
+try 60 "a = 0; for (i = 0; i < 5; i = i + 1) { a = a + i; a = a + 10;} return a;"
+try "OK\n" "return foo();"
 
 echo OK

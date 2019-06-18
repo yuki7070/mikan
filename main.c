@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
     count = 0;
 
     identities = new_map();
+    functions = new_map();
 
     tokens = tokenize();
 

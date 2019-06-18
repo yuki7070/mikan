@@ -265,23 +265,33 @@ Node *term() {
         return node;
     }
 
-    if (t->ty == TK_NUM) {
-        pos++;
+    if (consume(TK_NUM)) {
         return new_node_num(t->val);
     }
 
-    if (t->ty == TK_IDENT) {
+    if (consume(TK_IDENT)) {
+        if (consume('(')) {
+            Node *node = malloc(sizeof(Node));
+            node->ty = ND_FUNC;
+            node->name = t->name;
+
+            if (!consume(')')) {
+                Token *t = tokens->data[pos];
+                error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
+            }
+
+            return node;
+        }
+
         if (map_exists(identities, t->name) == 1) {
             int offset = (int)map_get(identities, t->name);
             Node *node = new_node_ident(offset);
-            pos++;
             return node;
         }
 
         int offset = (count + 1) * 8;
         Node *node = new_node_ident(offset);
         map_put(identities, t->name, offset);
-        pos++;
         count++;
         return node;
     }
@@ -369,8 +379,12 @@ void gen(Node *node) {
         Vector *block = node->block;
         for (int j = 0; j < block->len; j++) {
             gen(block->data[j]);
-            //printf("    pop rax\n");
         }
+        return;
+    }
+
+    if (node->ty == ND_FUNC) {
+        printf("    call %s\n", node->name);
         return;
     }
 

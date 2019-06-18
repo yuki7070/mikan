@@ -21,6 +21,7 @@ typedef struct {
 } Map;
 
 Map *identities;
+Map *functions;
 Map *new_map();
 void map_put(Map *map, char *key, void *val);
 void *map_get(Map *map, char *key);
@@ -47,6 +48,8 @@ typedef struct Node {
     struct Node *inc;
 
     struct Vector *block;
+
+    char *name;
 } Node;
 
 enum {
@@ -58,6 +61,7 @@ enum {
     ND_WHILE,
     ND_FOR,
     ND_BLOCK,
+    ND_FUNC,
     ND_EQ,
     ND_NE,
     ND_LE,
