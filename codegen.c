@@ -333,6 +333,9 @@ Node *term() {
 
 void func_lval(Node *parent, Node *node) {
 
+    //printf("%d\n", node->ty);
+
+    //printf("%d\n", node->ty);
     if (node->ty != ND_LVAR) {
         node->parent = malloc(sizeof(parent));
         node->parent = parent;
@@ -348,6 +351,12 @@ void func_lval(Node *parent, Node *node) {
                 node->cond->parent = parent;
             if (node->els)
                 node->els->parent = parent;
+        }
+        if (node->ty == ND_FUNC) {
+            Vector *args = node->args;
+            for (int j = 0; j < args->len; j++) {
+                func_lval(parent, args->data[j]);
+            }
         }
         return;
     }
@@ -513,6 +522,16 @@ void gen(Node *node) {
 
     if (node->ty == ND_FUNC) {
         Vector *args = node->args;
+        /*
+        Map *idents = new_map();
+        node->idents = idents;
+        for (int j = 0; j < args->len; j++) {
+            Node *n = args->data[j];
+            printf("%d\n", n->ty);
+            func_lval(node, args->data[j]);
+        }
+        */
+        
         for (int j = 0; j < args->len; j++) {
             gen(args->data[j]);
         }
@@ -545,16 +564,16 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_DFUNC) {
-        //Vector *args = node->args;
+        Vector *args = node->args;
         Vector *block = node->block;
         Map *idents = new_map();
         node->idents = idents;
 
-        /*
+        //printf("AREARE\n");
         for (int j = 0; j < args->len; j++) {
-            func_lval(node, block->data[j]);
+            func_lval(node, args->data[j]);
         }
-        */
+        
         for (int j = 0; j < block->len; j++) {
             func_lval(node, block->data[j]);
         }
@@ -562,11 +581,31 @@ void gen(Node *node) {
         printf("    push rbp\n");
         printf("    mov rbp, rsp\n");
         printf("    sub rsp, %d\n", idents->keys->len*8);
+
+        for (int j = 0; j < args->len; j++) {
+            Node *n = args->data[j];
+            //printf("%d\n", n->ty);
+            gen_lval(n);
+            switch (j) {
+            case 0:
+                printf("    push rdi\n");
+                break;
+            case 1:
+                printf("    push rsi\n");
+                break;
+            case 3:
+                printf("    push rdx\n");
+                break;
+            }
+            printf("    pop rdi\n");
+            printf("    pop rax\n");
+            printf("    mov [rax], rdi\n");
+        }
         
         for (int j = 0; j < block->len; j++) {
             Node *n = block->data[j];
             gen(n);
-            if (n->ty != ND_IF) {
+            if (n->ty != ND_IF && n->ty != ND_RETURN) {
                 printf("    pop rax\n");
             }
         }

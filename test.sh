@@ -24,5 +24,6 @@ try 10 "main() { a = 5; if (5 > 1) { a = 10;} return a; }"
 try 10 "test() { a = 7; b = 3; return a + b; } main() { return test(); }"
 try 20 "main() { a = 10; if (a > 5) { b = 10; a = a + b; } else { b = 5; a = a + b; } return a; }"
 try 6 "main() { a = 1; if (a > 5) { b = 10; a = a + b; } else { b = 5; a = a + b; } return a; }"
+try 10 "test(a, b) { return a + b; } main() { a = 7; b = 3; return test(a, b); }"
 
 echo OK
