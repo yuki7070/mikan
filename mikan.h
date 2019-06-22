@@ -51,6 +51,12 @@ typedef struct Node {
 
     char *name;
     struct Vector *args;
+    struct Map *idents;
+    int is_return;
+
+    struct Node *parent;
+    struct Node *func;
+    //struct Node *func;
 } Node;
 
 enum {
@@ -63,6 +69,7 @@ enum {
     ND_FOR,
     ND_BLOCK,
     ND_FUNC,
+    ND_DFUNC,
     ND_EQ,
     ND_NE,
     ND_LE,
@@ -75,6 +82,7 @@ void program();
 void gen(Node *node);
 
 int count;
+Map *func_var_count;
 
 
 typedef struct {

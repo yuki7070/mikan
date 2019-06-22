@@ -42,10 +42,10 @@ void *map_get(Map *map, char *key) {
 }
 
 int map_exists(Map *map, char *key) {
-  for (int i = 0; i < map->keys->len; i++)
-    if (!strcmp(map->keys->data[i], key))
-      return 1;
-  return 0;
+    for (int i = 0; i < map->keys->len; i++)
+        if (!strcmp(map->keys->data[i], key))
+            return 1;
+    return 0;
 }
 
 

@@ -16,18 +16,13 @@ try() {
     fi
 }
 
-try 2 "ab = 2; return ab;"
-try 14 "a = 3; b = 5 * 6 - 8; return a + b /2;"
-try 10 "ab = 2; ab = 10; return ab;"
-try 5 "return 5;"
-try 5 "ab = 10; if (ab > 5) ab = 5; return ab;"
-try 5 "ab = 3; if (4 > 5) return ab; else return 5;"
-try 4 "ab = 2; if (5 == 5) return 4; else return ab;"
-try 5 "a = 0; while (a < 5) a = a + 1; if (a == 5) return a;"
-try 5 "a = 2; a = a + 3; return a;"
-try 5 "a = 0; for (a = 0; a < 5; a = a + 1) {} return a;"
-try 5 "a = 3; if (10 > 5) { a = 5; } return a;"
-try 60 "a = 0; for (i = 0; i < 5; i = i + 1) { a = a + i; a = a + 10;} return a;"
-try "OK\n" "return foo();"
+try 10 "main() { abc = 10; return abc; }"
+try 30 "main() { abc = 10; def = 20; return abc+def; }"
+try 10 "main() { a = 10; if (5 > 1) { a = 10; } else { a = 5; } return a; }"
+try 5 "main() { a = 10; if (1 > 5) { a = 10; } else { a = 5; } return a; }"
+try 10 "main() { a = 5; if (5 > 1) { a = 10;} return a; }"
+try 10 "test() { a = 7; b = 3; return a + b; } main() { return test(); }"
+try 20 "main() { a = 10; if (a > 5) { b = 10; a = a + b; } else { b = 5; a = a + b; } return a; }"
+try 6 "main() { a = 1; if (a > 5) { b = 10; a = a + b; } else { b = 5; a = a + b; } return a; }"
 
 echo OK

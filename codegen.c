@@ -7,6 +7,7 @@ int pos = 0;
 
 int jump_count = 0;
 
+Node *function();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -168,7 +169,7 @@ Node *stmt() {
 
     node = expr();
 
-    if (!consume(';')) {
+    if (node->ty != ND_DFUNC && !consume(';')) {
         Token *t = tokens->data[pos];
         error_at(t->input, "';'ではないトークンです");
     }
@@ -261,14 +262,12 @@ Node *term() {
     if (consume('(')) {
         Node *node = expr();
         if (!consume(')')) {
-            //Token *t = tokens->data[pos];
             error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
         }
         return node;
     }
 
     if (consume(TK_NUM)) {
-        //Token *t = tokens->data[pos];
         return new_node_num(t->val);
     }
 
@@ -276,34 +275,104 @@ Node *term() {
         
         if (consume('(')) {
             Node *node = malloc(sizeof(Node));
-            node->ty = ND_FUNC;
             node->name = t->name;
             node->args = new_vector();
+            int ident_count = 0;
 
             while (!consume(')')) {
                 vec_push(node->args, term());
                 consume(',');
             }
+            
+            if (consume('{')) {
+                node->ty = ND_DFUNC;
+                node->name = t->name;
+                node->block = new_vector();
+                Map *func_ident = new_map();
+                
+                map_put(functions, node->name, node);
+
+                Vector *args = node->args;
+
+                for (int j = 0; j < args->len; j++) {
+                    Node *n = args->data[j];
+                    map_put(func_ident, n->name, (j+1)*8);
+                }
+
+                while (!consume('}')) {
+                    //Node *n = stmt();
+                    vec_push(node->block, stmt());
+                    //printf("%d\n", n->ty);
+                }
+            } else {
+                node->ty = ND_FUNC;
+            }
+
+           /*
+
+            if (!consume('{'))
+                return node;
+
+            node->func = stmt();
+
+            */
 
             return node;
         }
 
-        if (map_exists(identities, t->name) == 1) {
-            int offset = (int)map_get(identities, t->name);
-            Node *node = new_node_ident(offset);
-            return node;
-        }
+        Node *node = malloc(sizeof(Node));
+        node->ty = ND_LVAR;
+        node->name = t->name;
 
-        int offset = (count + 1) * 8;
-        Node *node = new_node_ident(offset);
-        map_put(identities, t->name, offset);
-        count++;
         return node;
     }
     
-    //Token *t = tokens->data[pos];
     error_at(t->input, "数値でも開き括弧でもないトークンです");
     exit(1);
+}
+
+void func_lval(Node *parent, Node *node) {
+
+    if (node->ty != ND_LVAR) {
+        node->parent = malloc(sizeof(parent));
+        node->parent = parent;
+        if (node->ty == ND_RETURN)
+            parent->is_return = 1;
+        if (node->lhs)
+            func_lval(parent, node->lhs);
+        if (node->rhs)
+            func_lval(parent, node->rhs);
+        if (node->ty == ND_IF) {
+            node->then->parent = parent;
+            if (node->cond)
+                node->cond->parent = parent;
+            if (node->els)
+                node->els->parent = parent;
+        }
+        return;
+    }
+
+    Map *idents = parent->idents;
+    Map *parent_idents = NULL;
+
+    if (parent->parent != NULL && (parent->parent->ty == ND_DFUNC || parent->parent->ty == ND_BLOCK)) {
+        parent_idents = parent->parent->idents;
+    }
+    int offset = 0;
+
+
+    if (parent_idents != NULL && map_exists(parent_idents, node->name)) {
+        int parent_offset = (int)map_get(parent_idents, node->name);
+        offset = parent_offset - (parent_idents->keys->len+1)*8;
+    } else if (map_exists(idents, node->name) == 1) {
+        offset = (int)map_get(idents, node->name);
+    } else {
+        offset = (idents->keys->len + 1) * 8;
+        map_put(idents, node->name, offset);
+    }
+
+    node->offset = offset;
+    return;
 }
 
 void gen_lval(Node *node) {
@@ -311,7 +380,11 @@ void gen_lval(Node *node) {
         error("代入の左辺値が変数ではありません");
 
     printf("    mov rax, rbp\n");
-    printf("    sub rax, %d\n", node->offset);
+    if (node->offset < 0) {
+        printf("    add rax, %d\n", node->offset*(-1));
+    } else {
+        printf("    sub rax, %d\n", node->offset);
+    }
     printf("    push rax\n");
 }
 
@@ -328,19 +401,42 @@ void gen(Node *node) {
     if (node->ty == ND_IF) {
         int j1 = jump_count++;
         int j2 = jump_count++;
+        Map *idents = new_map();
+        node->idents = idents;
+        func_lval(node, node->cond);
+        Vector *block = node->then->block;
+        for (int j = 0; j < block->len; j++) {
+            func_lval(node, block->data[j]);
+        }
+        if (node->els) {
+            Vector *block = node->els->block;
+            for (int j = 0; j < block->len; j++) {
+                func_lval(node, block->data[j]);
+            }
+        }
+
+        printf("    push rbp\n");
+        printf("    mov rbp, rsp\n");
+        printf("    sub rsp, %d\n", idents->keys->len*8);
+        
         gen(node->cond);
+
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
         if (node->els) {
             printf("    je  .Lelse%d\n", j1);
-        }
-        gen(node->then);
-        printf("    je  .Lend%d\n", j2);
-        if (node->els) {
+            gen(node->then);
+            printf("    jmp  .Lend%d\n", j2);
             printf(".Lelse%d:\n", j1);
             gen(node->els);
+        } else {
+            printf("    je  .Lend%d\n", j2);
+            gen(node->then);
         }
         printf(".Lend%d:\n", j2);
+        printf("    mov rsp, rbp\n");
+        printf("    pop rbp\n");
+
         return;
     }
 
@@ -383,9 +479,35 @@ void gen(Node *node) {
 
     if (node->ty == ND_BLOCK) {
         Vector *block = node->block;
+        
+        Map *idents = new_map();
+        node->idents = idents;
+/*
         for (int j = 0; j < block->len; j++) {
-            gen(block->data[j]);
+            func_lval(node, block->data[j]);
         }
+*/      
+        /*
+        printf("    push rbp\n");
+        printf("    mov rbp, rsp\n");
+        printf("    sub rsp, %d\n", idents->keys->len*8);
+        */
+        
+        for (int j = 0; j < block->len; j++) {
+            Node *n = block->data[j];
+            gen(n);
+            if (n->ty != ND_RETURN) {
+                printf("    pop rax\n");
+            }
+        }
+
+        /*
+        if (node->is_return != 1) {
+            printf("    mov rsp, rbp\n");
+            printf("    pop rbp\n");   
+        }
+        */
+
         return;
     }
 
@@ -418,6 +540,43 @@ void gen(Node *node) {
             }
         }
         printf("    call %s\n", node->name);
+        printf("    push rax\n");
+        return;
+    }
+
+    if (node->ty == ND_DFUNC) {
+        //Vector *args = node->args;
+        Vector *block = node->block;
+        Map *idents = new_map();
+        node->idents = idents;
+
+        /*
+        for (int j = 0; j < args->len; j++) {
+            func_lval(node, block->data[j]);
+        }
+        */
+        for (int j = 0; j < block->len; j++) {
+            func_lval(node, block->data[j]);
+        }
+        printf("%s: \n", node->name);
+        printf("    push rbp\n");
+        printf("    mov rbp, rsp\n");
+        printf("    sub rsp, %d\n", idents->keys->len*8);
+        
+        for (int j = 0; j < block->len; j++) {
+            Node *n = block->data[j];
+            gen(n);
+            if (n->ty != ND_IF) {
+                printf("    pop rax\n");
+            }
+        }
+
+        if (node->is_return != 1) {
+            printf("    mov rsp, rbp\n");
+            printf("    pop rbp\n");
+            printf("    ret\n");
+        }
+        
         return;
     }
 
@@ -480,8 +639,8 @@ void gen(Node *node) {
         printf("    setle al\n");
         printf("    movzb rax, al\n");
         break;
-    case '<':
-        printf("    cmp rax, rdi\n");
+    case '>':
+        printf("    cmp rdi, rax\n");
         printf("    setl al\n");
         printf("    movzb rax, al\n");
         break;
@@ -490,12 +649,12 @@ void gen(Node *node) {
         printf("    setle al\n");
         printf("    movzb rax, al\n");
         break;
-    case '>':
-        printf("    cmp rdi, rax\n");
+    case '<':
+        printf("    cmp rax, rdi\n");
         printf("    setl al\n");
         printf("    movzb rax, al\n");
         break;
     }
 
     printf("    push rax\n");
-}
+};

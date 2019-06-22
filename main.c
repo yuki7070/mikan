@@ -26,20 +26,25 @@ int main(int argc, char **argv) {
 
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
-    printf("main: \n");
+    //printf("main: \n");
 
+    /*
     printf("    push rbp\n");
     printf("    mov rbp, rsp\n");
-    printf("    sub rsp, %d\n", count * 8);
+    printf("    sub rsp, %d\n", count);
+    */
 
     for (int i = 0; code[i]; i++) {
         gen(code[i]);
 
-        printf("    pop rax\n");
+        //printf("    pop rax\n");
     }
 
+    /*
     printf("    mov rsp, rbp\n");
     printf("    pop rbp\n");
     printf("    ret\n");
+    */
+
     return 0;
 }
