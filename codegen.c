@@ -27,6 +27,19 @@ int consume(int ty) {
     return 1;
 }
 
+int type_consume(int ty) {
+    if (!consume(ty)) {
+        return 0;
+    }
+
+    Token *t = tokens->data[pos];
+
+    if (t->ty != TK_IDENT)
+        return 0;
+
+    return 1;
+}
+
 Node *new_node(int ty, Node *lhs, Node *rhs) {
     Node *node = malloc(sizeof(Node));
     node->ty = ty;
@@ -271,10 +284,14 @@ Node *term() {
         return new_node_num(t->val);
     }
 
-    if (consume(TK_IDENT)) {
+    if (type_consume(TK_INT)) {
         
+        Token *t = tokens->data[pos];
+        pos++;
         if (consume('(')) {
             Node *node = malloc(sizeof(Node));
+            node->var_ty = TY_INT;
+            node->token = t;
             node->name = t->name;
             node->args = new_vector();
             int ident_count = 0;
@@ -283,7 +300,7 @@ Node *term() {
                 vec_push(node->args, term());
                 consume(',');
             }
-            
+
             if (consume('{')) {
                 node->ty = ND_DFUNC;
                 node->name = t->name;
@@ -300,27 +317,49 @@ Node *term() {
                 }
 
                 while (!consume('}')) {
-                    //Node *n = stmt();
                     vec_push(node->block, stmt());
-                    //printf("%d\n", n->ty);
                 }
             } else {
                 node->ty = ND_FUNC;
             }
 
-           /*
+            return node;
+        }
 
-            if (!consume('{'))
-                return node;
+        Node *node = malloc(sizeof(Node));
+        node->token = t;
+        node->var_ty = TY_INT;
+        node->ty = ND_LVAR;
+        node->name = t->name;
 
-            node->func = stmt();
+        return node;
+    }
 
-            */
+    if (consume(TK_IDENT)) {
+        
+        if (consume('(')) {
+            Node *node = malloc(sizeof(Node));
+            node->token = t;
+            node->name = t->name;
+            node->args = new_vector();
+            int ident_count = 0;
+
+            while (!consume(')')) {
+                vec_push(node->args, term());
+                consume(',');
+            }
+            
+            if (consume('{')) {
+                error_at(t->input, "型が定義されていない関数宣言です");
+            }
+            
+            node->ty = ND_FUNC;
 
             return node;
         }
 
         Node *node = malloc(sizeof(Node));
+        node->token = t;
         node->ty = ND_LVAR;
         node->name = t->name;
 
@@ -333,9 +372,6 @@ Node *term() {
 
 void func_lval(Node *parent, Node *node) {
 
-    //printf("%d\n", node->ty);
-
-    //printf("%d\n", node->ty);
     if (node->ty != ND_LVAR) {
         node->parent = malloc(sizeof(parent));
         node->parent = parent;
@@ -369,13 +405,16 @@ void func_lval(Node *parent, Node *node) {
     }
     int offset = 0;
 
-
     if (parent_idents != NULL && map_exists(parent_idents, node->name)) {
         int parent_offset = (int)map_get(parent_idents, node->name);
         offset = parent_offset - (parent_idents->keys->len+1)*8;
     } else if (map_exists(idents, node->name) == 1) {
         offset = (int)map_get(idents, node->name);
     } else {
+        if (node->var_ty != TY_INT) {
+            Token *t = node->token;
+            error_at(t->input, "変数の型が不明です");
+        }        
         offset = (idents->keys->len + 1) * 8;
         map_put(idents, node->name, offset);
     }
@@ -569,14 +608,13 @@ void gen(Node *node) {
         Map *idents = new_map();
         node->idents = idents;
 
-        //printf("AREARE\n");
         for (int j = 0; j < args->len; j++) {
             func_lval(node, args->data[j]);
         }
-        
         for (int j = 0; j < block->len; j++) {
             func_lval(node, block->data[j]);
         }
+
         printf("%s: \n", node->name);
         printf("    push rbp\n");
         printf("    mov rbp, rsp\n");
@@ -584,7 +622,6 @@ void gen(Node *node) {
 
         for (int j = 0; j < args->len; j++) {
             Node *n = args->data[j];
-            //printf("%d\n", n->ty);
             gen_lval(n);
             switch (j) {
             case 0:

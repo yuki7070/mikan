@@ -56,8 +56,15 @@ typedef struct Node {
 
     struct Node *parent;
     struct Node *func;
+
+    int var_ty;
     //struct Node *func;
+    struct Token *token;
 } Node;
+
+enum {
+    TY_INT = 256,
+};
 
 enum {
     ND_NUM = 256,
@@ -74,6 +81,7 @@ enum {
     ND_NE,
     ND_LE,
     ND_GE,
+    ND_INT,
 };
 
 Node *code[100];
@@ -104,6 +112,7 @@ enum {
     TK_NE,
     TK_LE,
     TK_GE,
+    TK_INT,
     TK_EOF,
 };
 
