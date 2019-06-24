@@ -25,5 +25,6 @@ try 10 "int test() { int a = 7; int b = 3; return a + b; } int main() { return t
 try 20 "int main() { int a = 10; if (a > 5) { int b = 10; a = a + b; } else { int b = 5; a = a + b; } return a; }"
 try 6 "int main() { int a = 1; if (a > 5) { int b = 10; a = a + b; } else { int b = 5; a = a + b; } return a; }"
 try 10 "int test(int a, int b) { return a + b; } int main() { int a = 7; int b = 3; return test(a, b); }"
+try 10 "int main() { int *a = 10; return *a; }"
 
 echo OK

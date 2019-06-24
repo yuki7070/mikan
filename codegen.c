@@ -39,6 +39,13 @@ int read_ahead(int ty2) {
     return 1;
 }
 
+int valid_type(int ty) {
+    if (ty == INT || ty == PTR) {
+        return 1;
+    }
+    return 0;
+}
+
 Node *new_node(int ty, Node *lhs, Node *rhs) {
     Node *node = malloc(sizeof(Node));
     node->ty = ty;
@@ -332,13 +339,13 @@ Node *term() {
     }
 
     if (consume(TK_IDENT)) {
-        
+
+        Node *node = malloc(sizeof(Node));
+        node->token = t;
+        node->name = t->name;
+
         if (consume('(')) {
-            Node *node = malloc(sizeof(Node));
-            node->token = t;
-            node->name = t->name;
             node->args = new_vector();
-            int ident_count = 0;
 
             while (!consume(')')) {
                 vec_push(node->args, term());
@@ -354,12 +361,21 @@ Node *term() {
             return node;
         }
 
-        Node *node = malloc(sizeof(Node));
-        node->token = t;
         node->ty = ND_LVAR;
-        node->name = t->name;
 
         return node;
+    }
+
+    if (consume('*')) {
+        Node *node = malloc(sizeof(Node));
+        node->token = t;
+        node->ty = ND_DEREF;
+        node->lhs = term();
+        return node;
+    }
+
+    if (consume('&')) {
+
     }
     
     error_at(t->input, "数値でも開き括弧でもないトークンです");
@@ -380,8 +396,6 @@ Node *lval(int ty, Node *n) {
             node->type->ptr_to = t;
         } else {
             node->type = t;
-            //ここを変えろ
-            node->var_ty = TY_INT;
         }
         return node;
     }
@@ -396,6 +410,18 @@ Node *lval(int ty, Node *n) {
     Token *t = tokens->data[pos];
     error_at(t->input, "不明な型でしゅ");
     exit(1);
+}
+
+Node *typed_val(int ty, Node *n) {
+    Node *node = malloc(sizeof(Node));
+
+    if (n != NULL) {
+        node = n;
+    }
+
+    Type *t = malloc(sizeof(Type));
+    t->ty = ty;
+    node->type = t;
 }
 
 void func_lval(Node *parent, Node *node) {
@@ -434,17 +460,21 @@ void func_lval(Node *parent, Node *node) {
     int offset = 0;
 
     if (parent_idents != NULL && map_exists(parent_idents, node->name)) {
-        int parent_offset = (int)map_get(parent_idents, node->name);
-        offset = parent_offset - (parent_idents->keys->len+1)*8;
+        Node *parent_node = map_get(parent_idents, node->name);
+        offset = parent_node->offset - (parent_idents->keys->len+1)*8;
+        node->type = parent_node->type;
     } else if (map_exists(idents, node->name) == 1) {
-        offset = (int)map_get(idents, node->name);
+        Node *get_node = map_get(idents, node->name);
+        offset = get_node->offset;
+        node->type = get_node->type;
     } else {
-        if (node->type->ty != INT) {
+        if (!valid_type(node->type->ty)) {
             Token *t = node->token;
             error_at(t->input, "変数の型が不明です");
         }
         offset = (idents->keys->len + 1) * 8;
-        map_put(idents, node->name, offset);
+        node->offset = offset;
+        map_put(idents, node->name, node);
     }
 
     node->offset = offset;
@@ -689,10 +719,23 @@ void gen(Node *node) {
         return;
     }
 
+    if (node->ty == ND_DEREF) {
+        gen_lval(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+        return;
+    }
+
     if (node->ty == ND_LVAR) {
         gen_lval(node);
         printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
+        
+        if (node->type->ty != PTR) {
+            printf("    mov rax, [rax]\n");
+        }
+        //printf("    mov rax, [rax]\n");
+        
         printf("    push rax\n");
         return;
     }

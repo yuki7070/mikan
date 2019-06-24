@@ -93,6 +93,7 @@ enum {
     ND_LE,
     ND_GE,
     ND_INT,
+    ND_DEREF,
 };
 
 Node *code[100];
