@@ -18,6 +18,8 @@ Node *mul();
 Node *term();
 Node *unary();
 
+Node *lval(int ty, Node *n);
+
 int consume(int ty) {
     Token *t = tokens->data[pos];
 
@@ -27,15 +29,12 @@ int consume(int ty) {
     return 1;
 }
 
-int type_consume(int ty) {
-    if (!consume(ty)) {
-        return 0;
-    }
-
+int read_ahead(int ty2) {
     Token *t = tokens->data[pos];
 
-    if (t->ty != TK_IDENT)
+    if (t->ty != ty2) {
         return 0;
+    }
 
     return 1;
 }
@@ -252,9 +251,9 @@ Node *mul() {
     Node *node = unary();
 
     for (;;) {
-        if (consume('*'))
+        if (consume('*')) {
             node = new_node('*', node, unary());
-        else if (consume('/'))
+         } else if (consume('/'))
             node = new_node('/', node, unary());
         else
             return node;
@@ -284,55 +283,52 @@ Node *term() {
         return new_node_num(t->val);
     }
 
-    if (type_consume(TK_INT)) {
+    if (consume(TK_TYPE)) {
         
-        Token *t = tokens->data[pos];
-        pos++;
-        if (consume('(')) {
-            Node *node = malloc(sizeof(Node));
-            node->var_ty = TY_INT;
-            node->token = t;
+        if (consume(TK_INT)) {
+            Node *node = lval(INT, NULL);
+            Token *t = tokens->data[pos];
+            pos++;
+
             node->name = t->name;
-            node->args = new_vector();
-            int ident_count = 0;
+            node->token = t;
 
-            while (!consume(')')) {
-                vec_push(node->args, term());
-                consume(',');
-            }
+            if (consume('(')) {
+               node->args = new_vector(); 
 
-            if (consume('{')) {
-                node->ty = ND_DFUNC;
-                node->name = t->name;
-                node->block = new_vector();
-                Map *func_ident = new_map();
-                
-                map_put(functions, node->name, node);
-
-                Vector *args = node->args;
-
-                for (int j = 0; j < args->len; j++) {
-                    Node *n = args->data[j];
-                    map_put(func_ident, n->name, (j+1)*8);
+               while (!consume(')')) {
+                    vec_push(node->args, term());
+                    consume(',');
                 }
 
-                while (!consume('}')) {
-                    vec_push(node->block, stmt());
+                if (consume('{')) {
+                    node->ty = ND_DFUNC;
+                    node->block = new_vector();
+                    Map *func_ident = new_map();
+
+                    map_put(functions, node->name, node);
+
+                    Vector *args = node->args;
+
+                    for (int j = 0; j < args->len; j++) {
+                        Node *n = args->data[j];
+                        map_put(func_ident, n->name, (j+1)*8);
+                    }
+
+                    while (!consume('}')) {
+                        vec_push(node->block, stmt());
+                    }
+                } else {
+                    node->ty = ND_FUNC;
                 }
-            } else {
-                node->ty = ND_FUNC;
+
+                return node;
             }
+
+            node->ty = ND_LVAR;
 
             return node;
         }
-
-        Node *node = malloc(sizeof(Node));
-        node->token = t;
-        node->var_ty = TY_INT;
-        node->ty = ND_LVAR;
-        node->name = t->name;
-
-        return node;
     }
 
     if (consume(TK_IDENT)) {
@@ -367,6 +363,38 @@ Node *term() {
     }
     
     error_at(t->input, "数値でも開き括弧でもないトークンです");
+    exit(1);
+}
+
+Node *lval(int ty, Node *n) {
+    Node *node = malloc(sizeof(Node));
+
+    if (n != NULL) {
+        node = n;
+    }
+
+    if (read_ahead(TK_IDENT)) {
+        Type *t = malloc(sizeof(Type));
+        t->ty = ty;
+        if (n != NULL) {
+            node->type->ptr_to = t;
+        } else {
+            node->type = t;
+            //ここを変えろ
+            node->var_ty = TY_INT;
+        }
+        return node;
+    }
+
+    if (consume('*')) {
+        Type *t = malloc(sizeof(Type));
+        t->ty = PTR;
+        node->type = t;
+        return lval(ty, node);
+    }
+
+    Token *t = tokens->data[pos];
+    error_at(t->input, "不明な型でしゅ");
     exit(1);
 }
 
@@ -411,10 +439,10 @@ void func_lval(Node *parent, Node *node) {
     } else if (map_exists(idents, node->name) == 1) {
         offset = (int)map_get(idents, node->name);
     } else {
-        if (node->var_ty != TY_INT) {
+        if (node->type->ty != INT) {
             Token *t = node->token;
             error_at(t->input, "変数の型が不明です");
-        }        
+        }
         offset = (idents->keys->len + 1) * 8;
         map_put(idents, node->name, offset);
     }

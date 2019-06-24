@@ -120,6 +120,7 @@ Vector *tokenize() {
         }
 
         if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3])) {
+            add_token(tokens, TK_TYPE, p);
             add_token(tokens, TK_INT, p);
             i++;
             p += 3;

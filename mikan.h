@@ -60,7 +60,18 @@ typedef struct Node {
     int var_ty;
     //struct Node *func;
     struct Token *token;
+
+    struct Type *type;
 } Node;
+
+typedef struct Type {
+    enum {
+        INT,
+        PTR
+    } ty;
+    struct Type *ptr_to;
+} Type;
+
 
 enum {
     TY_INT = 256,
@@ -112,6 +123,7 @@ enum {
     TK_NE,
     TK_LE,
     TK_GE,
+    TK_TYPE,
     TK_INT,
     TK_EOF,
 };
