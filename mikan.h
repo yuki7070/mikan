@@ -81,6 +81,7 @@ enum {
     ND_NUM = 256,
     ND_RETURN,
     ND_LVAR,
+    ND_DVAR,
     ND_IF,
     ND_ELSE,
     ND_WHILE,

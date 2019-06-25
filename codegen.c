@@ -332,10 +332,12 @@ Node *term() {
                 return node;
             }
 
-            node->ty = ND_LVAR;
+            node->ty = ND_DVAR;
 
             return node;
         }
+
+        error_at(t->input, "不明な型です");
     }
 
     if (consume(TK_IDENT)) {
@@ -426,7 +428,7 @@ Node *typed_val(int ty, Node *n) {
 
 void func_lval(Node *parent, Node *node) {
 
-    if (node->ty != ND_LVAR) {
+    if (node->ty != ND_LVAR && node->ty != ND_DVAR) {
         node->parent = malloc(sizeof(parent));
         node->parent = parent;
         if (node->ty == ND_RETURN)
@@ -472,7 +474,13 @@ void func_lval(Node *parent, Node *node) {
             Token *t = node->token;
             error_at(t->input, "変数の型が不明です");
         }
-        offset = (idents->keys->len + 1) * 8;
+        //printf("%d\n", node->type->ty);
+        //printf("%d\n", node->ty);
+        if (node->type->ty == PTR) {
+            offset = (idents->keys->len + 2) * 8;
+        } else {
+            offset = (idents->keys->len + 1) * 8;
+        }
         node->offset = offset;
         map_put(idents, node->name, node);
     }
@@ -482,8 +490,36 @@ void func_lval(Node *parent, Node *node) {
 }
 
 void gen_lval(Node *node) {
-    if (node->ty != ND_LVAR)
+    if (node->ty == ND_DEREF) {
+        gen_lval(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+        return;
+    }
+
+    if (node->ty != ND_LVAR && node->ty != ND_DVAR)
         error("代入の左辺値が変数ではありません");
+
+    if (node->ty == ND_DVAR) {
+        printf("    mov rax, rbp\n");
+        if (node->offset < 0) {
+            printf("    add rax, %d\n", node->offset*(-1));
+        } else {
+            printf("    sub rax, %d\n", node->offset);
+        }
+        printf("    push rax\n");
+        printf("    mov rax, rbp\n");
+        if (node->offset < 0) {
+            printf("    sub rax, %d\n", (node->offset+8)*(-1));
+        } else {
+            printf("    sub rax, %d\n", (node->offset-8));
+        }
+        printf("    push rax\n");
+        printf("    pop rdi\n");
+        printf("    pop rax\n");
+        printf("    mov [rax], rdi\n");
+    }
 
     printf("    mov rax, rbp\n");
     if (node->offset < 0) {
@@ -666,6 +702,8 @@ void gen(Node *node) {
         Map *idents = new_map();
         node->idents = idents;
 
+        int stuck_size = 0;
+
         for (int j = 0; j < args->len; j++) {
             func_lval(node, args->data[j]);
         }
@@ -673,10 +711,17 @@ void gen(Node *node) {
             func_lval(node, block->data[j]);
         }
 
+        for (int j = 0; j < idents->vals->len; j++) {
+            Node *n = idents->vals->data[j];
+            if (stuck_size < n->offset) {
+                stuck_size = n->offset;
+            }
+        }
+
         printf("%s: \n", node->name);
         printf("    push rbp\n");
         printf("    mov rbp, rsp\n");
-        printf("    sub rsp, %d\n", idents->keys->len*8);
+        printf("    sub rsp, %d\n", stuck_size);
 
         for (int j = 0; j < args->len; j++) {
             Node *n = args->data[j];
@@ -720,7 +765,17 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_DEREF) {
+        
+        if (node->lhs->type->ty != PTR) {
+            Token *t = node->token;
+            error_at(t->input, "ポインタじゃないよ！");
+        }
+        
         gen_lval(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+    
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
@@ -734,9 +789,14 @@ void gen(Node *node) {
         if (node->type->ty != PTR) {
             printf("    mov rax, [rax]\n");
         }
-        //printf("    mov rax, [rax]\n");
         
         printf("    push rax\n");
+        return;
+    }
+
+    if (node->ty == ND_DVAR) {
+        gen_lval(node);
+        
         return;
     }
 
