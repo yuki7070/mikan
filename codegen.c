@@ -501,7 +501,7 @@ void gen_lval(Node *node) {
     if (node->ty != ND_LVAR && node->ty != ND_DVAR)
         error("代入の左辺値が変数ではありません");
 
-    if (node->ty == ND_DVAR) {
+    if (node->ty == ND_DVAR && node->type->ty == PTR) {
         printf("    mov rax, rbp\n");
         if (node->offset < 0) {
             printf("    add rax, %d\n", node->offset*(-1));
