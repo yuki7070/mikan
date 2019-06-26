@@ -37,13 +37,6 @@ int read_ahead(int ty2) {
     return 1;
 }
 
-int valid_type(int ty) {
-    if (ty == INT || ty == PTR) {
-        return 1;
-    }
-    return 0;
-}
-
 Node *new_node(int ty, Node *lhs, Node *rhs) {
     Node *node = malloc(sizeof(Node));
     node->ty = ty;
@@ -337,6 +330,17 @@ Node *term() {
                 }
 
                 return node;
+            }
+
+            if (consume('[')) {
+                node->type->ty = ARRAY;
+                node->type->ptr_to = INT;
+                if (!consume(TK_NUM))
+                    error_at(t->input, "配列のサイズがぁぁぁあ？？？");
+                Token *t = tokens->data[pos-1];
+                node->type->array_size = t->val;
+                if (!consume(']'))
+                    error_at(t->input, "配列のとじ括弧がぁぁ？？？");
             }
 
             node->ty = ND_DVAR;

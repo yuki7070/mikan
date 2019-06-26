@@ -67,9 +67,11 @@ typedef struct Node {
 typedef struct Type {
     enum {
         INT,
-        PTR
+        PTR,
+        ARRAY,
     } ty;
     struct Type *ptr_to;
+    size_t array_size;
 } Type;
 
 

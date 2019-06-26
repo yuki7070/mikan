@@ -29,4 +29,5 @@ try 10 "int main() { int *a; *a = 10; return *a; }"
 try 10 "int main() { int x = 10; int *y; y = &x; return *y;}"
 try 4 "int main() { int x; x = sizeof(x); return x; }"
 try 8 "int main() { int *x; return sizeof(x); }"
+try 10 "int main() { int x[10]; int y = 10; return y; }"
 echo OK

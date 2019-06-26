@@ -5,6 +5,13 @@
 
 int jump_count = 0;
 
+int valid_type(int ty) {
+    if (ty == INT || ty == PTR || ty == ARRAY) {
+        return 1;
+    }
+    return 0;
+}
+
 void func_lval(Node *parent, Node *node) {
 
     if (node->ty != ND_LVAR && node->ty != ND_DVAR) {
@@ -55,10 +62,35 @@ void func_lval(Node *parent, Node *node) {
         }
         //printf("%d\n", node->type->ty);
         //printf("%d\n", node->ty);
+        int stuck_size = 0;
+        for (int j = 0; j < idents->vals->len; j++) {
+            Node *n = idents->vals->data[j];
+            if (stuck_size < n->offset) {
+                stuck_size = n->offset;
+            }
+        }
+
         if (node->type->ty == PTR) {
-            offset = (idents->keys->len + 2) * 8;
-        } else {
-            offset = (idents->keys->len + 1) * 8;
+            Type *t = node->type;
+            int size;
+            if (node->type->ptr_to == INT) {
+                size = 8;
+            } else if (node->type->ptr_to == PTR) {
+                size = 8;
+            }
+            offset = stuck_size + 8 + size;
+        } else if (node->type->ty == INT) {
+            offset = stuck_size + 8;
+        } else if (node->type->ty == ARRAY) {
+            Type *t = node->type;
+            int size;
+            if (node->type->ptr_to == INT) {
+                size = 8;
+            } else if (node->type->ptr_to == PTR) {
+                size = 8;
+            }
+            
+            offset = stuck_size + (int)t->array_size * size;
         }
         node->offset = offset;
         map_put(idents, node->name, node);
