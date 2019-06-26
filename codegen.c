@@ -168,6 +168,24 @@ void calc_ptr(Node *node) {
     }
 }
 
+void check_type(Node *node) {
+    if (node->ty == ND_NUM || node->type->ty == INT) {
+        printf("    push 4\n");
+        return;
+    }
+    if (node->type->ty == PTR) {
+        printf("    push 8\n");
+        return;
+    }
+    if (node->lhs)
+        return check_type(node->lhs);
+    if (node->rhs)
+        return check_type(node->rhs);
+
+    Token *t = node->token;
+    error_at(t->input, "何かがおかしいかも...?");
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         gen(node->lhs);
@@ -437,6 +455,11 @@ void gen(Node *node) {
 
         printf("    add rax, rdi\n");
         printf("    push rax\n");
+        return;
+    }
+
+    if (node->ty == ND_SIZEOF) {
+        check_type(node->lhs);
         return;
     }
 

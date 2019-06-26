@@ -27,4 +27,6 @@ try 6 "int main() { int a = 1; if (a > 5) { int b = 10; a = a + b; } else { int 
 try 10 "int test(int a, int b) { return a + b; } int main() { int a = 7; int b = 3; return test(a, b); }"
 try 10 "int main() { int *a; *a = 10; return *a; }"
 try 10 "int main() { int x = 10; int *y; y = &x; return *y;}"
+try 4 "int main() { int x; x = sizeof(x); return x; }"
+try 8 "int main() { int *x; return sizeof(x); }"
 echo OK

@@ -127,6 +127,13 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
+            add_token(tokens, TK_SIZEOF, p);
+            i++;
+            p += 6;
+            continue;
+        }
+
         if (isalpha(*p) || *p == '_') {
             int j = 1;
             while (is_alnum(p[j]))

@@ -96,6 +96,7 @@ enum {
     ND_INT,
     ND_DEREF,
     ND_ADDR,
+    ND_SIZEOF,
 };
 
 Node *code[100];
@@ -128,6 +129,7 @@ enum {
     TK_GE,
     TK_TYPE,
     TK_INT,
+    TK_SIZEOF,
     TK_EOF,
 };
 
