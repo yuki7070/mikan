@@ -378,6 +378,11 @@ void gen(Node *node) {
         return;
     }
 
+    if (node->ty == ND_ADDR) {
+        gen_lval(node->lhs);
+        return;
+    }
+
     gen(node->lhs);
     gen(node->rhs);
 

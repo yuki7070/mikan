@@ -375,7 +375,11 @@ Node *term() {
     }
 
     if (consume('&')) {
-
+        Node *node = malloc(sizeof(Node));
+        node->token = t;
+        node->ty = ND_ADDR;
+        node->lhs = term();
+        return node;
     }
     
     error_at(t->input, "数値でも開き括弧でもないトークンです");
