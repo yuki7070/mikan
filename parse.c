@@ -304,7 +304,7 @@ Node *term() {
                node->args = new_vector(); 
 
                while (!consume(')')) {
-                    vec_push(node->args, term());
+                    vec_push(node->args, expr());
                     consume(',');
                 }
 
@@ -361,7 +361,7 @@ Node *term() {
             node->args = new_vector();
 
             while (!consume(')')) {
-                vec_push(node->args, term());
+                vec_push(node->args, expr());
                 consume(',');
             }
             

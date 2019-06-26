@@ -166,7 +166,7 @@ void calc_ptr(Node *node) {
             printf("    imul rax, 8\n");
         }
         printf("    push rax\n");
-    } else if ((node->lhs->type->ty == PTR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
+    } else if ((node->lhs->type && node->lhs->type->ty == PTR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
         if (node->lhs->type->ptr_to == PTR) {
             printf("    pop rax\n");
             printf("    imul rax, 8\n");
@@ -186,7 +186,7 @@ void calc_ptr(Node *node) {
         }
         printf("    push rax\n");
         printf("    push rdi\n");
-    } else if ((node->rhs->type->ty == PTR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
+    } else if ((node->rhs->type && node->rhs->type->ty == PTR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
         printf("    pop rdi\n");
         if (node->rhs->type->ptr_to == PTR) {
             printf("    pop rax\n");
