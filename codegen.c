@@ -122,6 +122,52 @@ void gen_lval(Node *node) {
     printf("    push rax\n");
 }
 
+void calc_ptr(Node *node) {
+        gen(node->lhs);
+        gen(node->rhs);
+    if ((node->lhs->ty == ND_ADDR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
+        if (node->lhs->lhs->type->ty == PTR) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        } else if (node->lhs->lhs->type->ty == INT) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        }
+        printf("    push rax\n");
+    } else if ((node->lhs->type->ty == PTR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
+        if (node->lhs->type->ptr_to == PTR) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        } else if (node->lhs->type->ptr_to == INT) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        }
+        printf("    push rax\n");
+    } else if ((node->rhs->ty == ND_ADDR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
+        printf("    pop rdi\n");
+        if (node->rhs->lhs->type->ty == PTR) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        } else if (node->rhs->lhs->type->ty == INT) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        }
+        printf("    push rax\n");
+        printf("    push rdi\n");
+    } else if ((node->rhs->type->ty == PTR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
+        printf("    pop rdi\n");
+        if (node->rhs->type->ptr_to == PTR) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        } else if (node->rhs->type->ptr_to == INT) {
+            printf("    pop rax\n");
+            printf("    imul rax, 8\n");
+        }
+        printf("    push rax\n");
+        printf("    push rdi\n");
+    }
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         gen(node->lhs);
@@ -383,6 +429,17 @@ void gen(Node *node) {
         return;
     }
 
+    if (node->ty == '+') {
+        calc_ptr(node);
+
+        printf("    pop rdi\n");
+        printf("    pop rax\n");
+
+        printf("    add rax, rdi\n");
+        printf("    push rax\n");
+        return;
+    }
+
     gen(node->lhs);
     gen(node->rhs);
 
@@ -390,14 +447,11 @@ void gen(Node *node) {
     printf("    pop rax\n");
 
     switch (node->ty) {
-    case '+':
-        printf("    add rax, rdi\n");
-        break;
     case '-':
         printf("    sub rax, rdi\n");
         break;
     case '*':
-        printf("    imul rdi\n");
+        printf("    imul rax, rdi\n");
         break;
     case '/':
         printf("    cqo\n");
