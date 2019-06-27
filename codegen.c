@@ -145,6 +145,33 @@ void gen_lval(Node *node) {
         printf("    mov [rax], rdi\n");
     }
 
+    if (node->ty == ND_LVAR && node->type->ty == ARRAY) {
+        gen(node->index);
+        int size = 0;
+        if (node->type->ptr_to == PTR) {
+            size = 8;
+        } else if (node->type->ptr_to == INT) {
+            size = 8;
+        }
+        printf("    pop rax\n");
+        printf("    imul rax, %d\n", size);
+        if (node->offset < 0) {
+            printf("    mov rdi, %d\n", node->offset*(-1));
+        } else {
+            printf("    mov rdi, %d\n", node->offset);
+        }
+        printf("    sub rdi, rax\n");
+
+        printf("    mov rax, rbp\n");
+        if (node->offset < 0) {
+            printf("    add rax, rdi\n");
+        } else {
+            printf("    sub rax, rdi\n");
+        }
+        printf("    push rax\n");
+        return;
+    }
+
     printf("    mov rax, rbp\n");
     if (node->offset < 0) {
         printf("    add rax, %d\n", node->offset*(-1));

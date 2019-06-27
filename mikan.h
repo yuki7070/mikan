@@ -62,6 +62,8 @@ typedef struct Node {
     struct Token *token;
 
     struct Type *type;
+
+    struct Node *index;
 } Node;
 
 typedef struct Type {

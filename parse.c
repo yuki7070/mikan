@@ -338,7 +338,7 @@ Node *term() {
                 if (!consume(TK_NUM))
                     error_at(t->input, "配列のサイズがぁぁぁあ？？？");
                 Token *t = tokens->data[pos-1];
-                node->type->array_size = t->val;
+                node->type->array_size = t->val + 1;
                 if (!consume(']'))
                     error_at(t->input, "配列のとじ括弧がぁぁ？？？");
             }
@@ -372,6 +372,14 @@ Node *term() {
             node->ty = ND_FUNC;
 
             return node;
+        }
+
+        if (consume('[')) {
+
+            node->index = expr();
+
+            if (!consume(']'))
+                error_at(t->input, "配列のとじ括弧がぁぁ？？？");
         }
 
         node->ty = ND_LVAR;
