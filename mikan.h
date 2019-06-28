@@ -68,7 +68,7 @@ typedef struct Node {
 
 typedef struct Type {
     enum {
-        INT,
+        INT = 1,
         PTR,
         ARRAY,
     } ty;

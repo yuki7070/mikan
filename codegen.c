@@ -60,8 +60,6 @@ void func_lval(Node *parent, Node *node) {
             Token *t = node->token;
             error_at(t->input, "変数の型が不明です");
         }
-        //printf("%d\n", node->type->ty);
-        //printf("%d\n", node->ty);
         int stuck_size = 0;
         for (int j = 0; j < idents->vals->len; j++) {
             Node *n = idents->vals->data[j];
@@ -73,9 +71,9 @@ void func_lval(Node *parent, Node *node) {
         if (node->type->ty == PTR) {
             Type *t = node->type;
             int size;
-            if (node->type->ptr_to == INT) {
+            if (node->type->ptr_to->ty == INT) {
                 size = 8;
-            } else if (node->type->ptr_to == PTR) {
+            } else if (node->type->ptr_to->ty == PTR) {
                 size = 8;
             }
             offset = stuck_size + 8 + size;
@@ -84,9 +82,9 @@ void func_lval(Node *parent, Node *node) {
         } else if (node->type->ty == ARRAY) {
             Type *t = node->type;
             int size;
-            if (node->type->ptr_to == INT) {
+            if (node->type->ptr_to->ty == INT) {
                 size = 8;
-            } else if (node->type->ptr_to == PTR) {
+            } else if (node->type->ptr_to->ty == PTR) {
                 size = 8;
             }
             
@@ -115,15 +113,22 @@ void dec_arg(Node *node) {
 
 void gen_lval(Node *node) {
     if (node->ty == ND_DEREF) {
-        gen_lval(node->lhs);
-        printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
-        printf("    push rax\n");
+        if (node->lhs->type && node->lhs->type->ty == PTR) {
+            gen(node->lhs);
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
+        } else {
+            gen(node->lhs);
+        }
         return;
     }
 
-    if (node->ty != ND_LVAR && node->ty != ND_DVAR)
+    if (node->ty != ND_LVAR && node->ty != ND_DVAR) {
+        printf("%d\n", node->ty);
+        printf("%d\n", '+');
         error("代入の左辺値が変数ではありません");
+    }
 
     if (node->ty == ND_DVAR && node->type->ty == PTR) {
         printf("    mov rax, rbp\n");
@@ -145,7 +150,10 @@ void gen_lval(Node *node) {
         printf("    mov [rax], rdi\n");
     }
 
+    /*
     if (node->ty == ND_LVAR && node->type->ty == ARRAY) {
+        printf("ARE\n");
+        
         gen(node->index);
         int size = 0;
         if (node->type->ptr_to == PTR) {
@@ -169,8 +177,14 @@ void gen_lval(Node *node) {
             printf("    sub rax, rdi\n");
         }
         printf("    push rax\n");
+        
         return;
     }
+    */
+
+   if (node->ty == ND_LVAR && node->type->ty == ARRAY) {
+       //printf("TESTARRAY\n");
+   }
 
     printf("    mov rax, rbp\n");
     if (node->offset < 0) {
@@ -182,49 +196,79 @@ void gen_lval(Node *node) {
 }
 
 void calc_ptr(Node *node) {
-        gen(node->lhs);
-        gen(node->rhs);
-    if ((node->lhs->ty == ND_ADDR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
-        if (node->lhs->lhs->type->ty == PTR) {
-            printf("    pop rax\n");
+    gen(node->lhs);
+    gen(node->rhs);
+
+    int lhs = is_ptr_or_array(node->lhs);
+    int rhs = is_ptr_or_array(node->rhs);
+
+    if (lhs == 0 && rhs == 0)
+        return;
+    
+    if (lhs != 0 && rhs != 0)
+        return;
+
+    printf("    pop rax\n");
+    if (rhs == 0) {
+        if (lhs == INT) {
             printf("    imul rax, 8\n");
-        } else if (node->lhs->lhs->type->ty == INT) {
-            printf("    pop rax\n");
+        } else if (lhs == PTR) {
             printf("    imul rax, 8\n");
         }
-        printf("    push rax\n");
-    } else if ((node->lhs->type && node->lhs->type->ty == PTR) && !(node->rhs->ty == ND_ADDR || node->rhs->type->ty == PTR)) {
-        if (node->lhs->type->ptr_to == PTR) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
-        } else if (node->lhs->type->ptr_to == INT) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
-        }
-        printf("    push rax\n");
-    } else if ((node->rhs->ty == ND_ADDR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
+    }
+
+    if (lhs == 0) {
         printf("    pop rdi\n");
-        if (node->rhs->lhs->type->ty == PTR) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
-        } else if (node->rhs->lhs->type->ty == INT) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
+        if (rhs == INT) {
+            printf("    imul rdi, 8\n");
+        } else if (rhs == PTR) {
+            printf("    imul rdi, 8\n");
         }
-        printf("    push rax\n");
-        printf("    push rdi\n");
-    } else if ((node->rhs->type && node->rhs->type->ty == PTR) && !(node->lhs->ty == ND_ADDR || node->lhs->type->ty == PTR)) {
-        printf("    pop rdi\n");
-        if (node->rhs->type->ptr_to == PTR) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
-        } else if (node->rhs->type->ptr_to == INT) {
-            printf("    pop rax\n");
-            printf("    imul rax, 8\n");
-        }
-        printf("    push rax\n");
         printf("    push rdi\n");
     }
+
+    printf("    push rax\n");
+}
+
+int is_ptr_or_array(Node *node) {
+    if (node->type != NULL && (node->type->ty == PTR || node->type->ty == ARRAY)) {
+        return ptr_type(node->type->ptr_to);
+    }
+    if (node->ty == ND_DEREF) {
+        Node *child = node->lhs;
+        if (child->type->ptr_to->ty == PTR || child->type->ptr_to->ty == ARRAY)
+            return ptr_type(child);
+        return 0;
+    }
+    if (node->lhs)
+        return is_ptr_or_array(node->lhs);
+    if (node->rhs)
+        return is_ptr_or_array(node->rhs);
+    return 0;
+}
+
+int is_ptr(Node *node) {
+    if (node->type != NULL && node->type->ty == PTR) {
+        return ptr_type(node->type->ptr_to);
+    }
+    if (node->ty == ND_DEREF) {
+        Node *child = node->lhs;
+        if (child->type->ptr_to->ty == PTR)
+            return ptr_type(child);
+        return 0;
+    }
+    if (node->lhs)
+        return is_ptr(node->lhs);
+    if (node->rhs)
+        return is_ptr(node->rhs);
+    return 0;
+}
+
+int ptr_type(Type *type) {
+    if (type->ty != PTR && type->ty != ARRAY) {
+        return type->ty;
+    }
+    return ptr_type(type->ptr_to);
 }
 
 void check_type(Node *node) {
@@ -414,7 +458,6 @@ void gen(Node *node) {
 
         for (int j = 0; j < args->len; j++) {
             Node *n = args->data[j];
-            //printf("%d\n", n->ty);
             dec_arg(n);
             switch (j) {
             case 0:
@@ -456,19 +499,17 @@ void gen(Node *node) {
 
     if (node->ty == ND_DEREF) {
         
-        if (node->lhs->type->ty != PTR) {
-            Token *t = node->token;
-            error_at(t->input, "ポインタじゃないよ！");
+        gen(node->lhs);
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+
+        if (is_ptr(node->lhs) != 0) {
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
         }
-        
-        gen_lval(node->lhs);
-        printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
-        printf("    push rax\n");
-    
-        printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
-        printf("    push rax\n");
+
         return;
     }
 
@@ -476,7 +517,7 @@ void gen(Node *node) {
         gen_lval(node);
         printf("    pop rax\n");
         
-        if (node->type->ty != PTR) {
+        if (node->type->ty != PTR && node->type->ty != ARRAY) {
             printf("    mov rax, [rax]\n");
         }
         

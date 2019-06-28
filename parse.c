@@ -334,7 +334,9 @@ Node *term() {
 
             if (consume('[')) {
                 node->type->ty = ARRAY;
-                node->type->ptr_to = INT;
+                Type *t_a = malloc(sizeof(Type));
+                t_a->ty = INT;
+                node->type->ptr_to = t_a;
                 if (!consume(TK_NUM))
                     error_at(t->input, "配列のサイズがぁぁぁあ？？？");
                 Token *t = tokens->data[pos-1];
