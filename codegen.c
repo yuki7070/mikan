@@ -198,9 +198,15 @@ void gen_lval(Node *node) {
 void calc_ptr(Node *node) {
     gen(node->lhs);
     gen(node->rhs);
+    //printf("calcの中の中\n");
 
     int lhs = is_ptr_or_array(node->lhs);
+    //printf("TESTcalc\n");
     int rhs = is_ptr_or_array(node->rhs);
+    //printf("TESTcalc2\n");
+
+    int lhs_ptr = is_ptr(node->lhs);
+    int rhs_ptr = is_ptr(node->rhs);
 
     if (lhs == 0 && rhs == 0)
         return;
@@ -208,6 +214,23 @@ void calc_ptr(Node *node) {
     if (lhs != 0 && rhs != 0)
         return;
 
+    if (lhs_ptr || rhs_ptr) {
+        //printf("TESTTEST\n");
+        if (rhs == 0) {
+            printf("    pop rdi\n");
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
+            printf("    push rdi\n");
+        }
+
+        if (lhs == 0) {
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
+        }
+    }
+    
     printf("    pop rax\n");
     if (rhs == 0) {
         if (lhs == INT) {
@@ -228,6 +251,7 @@ void calc_ptr(Node *node) {
     }
 
     printf("    push rax\n");
+
 }
 
 int is_ptr_or_array(Node *node) {
@@ -236,6 +260,19 @@ int is_ptr_or_array(Node *node) {
     }
     if (node->ty == ND_DEREF) {
         Node *child = node->lhs;
+        if (child->type == NULL) {
+            int lhs = is_ptr_or_array(child->lhs);
+            int rhs = is_ptr_or_array(child->rhs);
+            if (lhs == 0 && rhs == 0)
+                return 0;
+            if (lhs != 0) {
+                //printf("%d\n", lhs);
+                //printf("%d\n", rhs);
+                return lhs;
+            }
+            if (rhs != 0)
+                return rhs;
+        }
         if (child->type->ptr_to->ty == PTR || child->type->ptr_to->ty == ARRAY)
             return ptr_type(child);
         return 0;
@@ -291,6 +328,7 @@ void check_type(Node *node) {
 
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
+        //printf("TEST_RETURN\n");
         gen(node->lhs);
         printf("    pop rax\n");
         printf("    mov rsp, rbp\n");
@@ -498,18 +536,23 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_DEREF) {
-        
+        //printf("DEREF_START\n");
         gen(node->lhs);
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
+
+        int lhs_ptr = is_ptr(node->lhs);
+        int lhs_ptr_array = is_ptr_or_array(node->lhs);
+        printf("%d\n", lhs_ptr);
+        printf("%d\n", lhs_ptr_array);
 
         if (is_ptr(node->lhs) != 0) {
             printf("    pop rax\n");
             printf("    mov rax, [rax]\n");
             printf("    push rax\n");
         }
-
+        //printf("DEREFE_END\n");
         return;
     }
 
@@ -532,6 +575,7 @@ void gen(Node *node) {
     }
 
     if (node->ty == '=') {
+        //printf("TEST\n");
         gen_lval(node->lhs);
         gen(node->rhs);
 
@@ -539,6 +583,7 @@ void gen(Node *node) {
         printf("    pop rax\n");
         printf("    mov [rax], rdi\n");
         printf("    push rdi\n");
+        //printf("TEST2\n");
         return;
     }
 
@@ -548,13 +593,16 @@ void gen(Node *node) {
     }
 
     if (node->ty == '+') {
+        //printf("TEST_+\n");
         calc_ptr(node);
+        //printf("TEST_+_2\n");
 
         printf("    pop rdi\n");
         printf("    pop rax\n");
 
         printf("    add rax, rdi\n");
         printf("    push rax\n");
+        //printf("+のOQARI\n");
         return;
     }
 
