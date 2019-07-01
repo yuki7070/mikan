@@ -376,15 +376,21 @@ Node *term() {
             return node;
         }
 
+        node->ty = ND_LVAR;
+
         if (consume('[')) {
 
-            node->index = expr();
+            Node *dererf = malloc(sizeof(Node));
+            dererf->token = t;
+            dererf->ty = ND_DEREF;
+            dererf->lhs = new_node('+', node, expr());
 
             if (!consume(']'))
                 error_at(t->input, "配列のとじ括弧がぁぁ？？？");
+            
+            return dererf;
+            
         }
-
-        node->ty = ND_LVAR;
 
         return node;
     }

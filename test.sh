@@ -34,5 +34,6 @@ try 10 "int main() { int x[10]; int y = 10; return y; }"
 try 55 "int a(int n) { int b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1; } if (n == 2) { b = 1;} if (n > 2) { b = a(n-1) + a(n-2); } return b; } int main() { return a(10); }"
 try 4 "int main() { int a[2]; *a = 1; *(a+1) = 2; *(a+2) = 4; return *(a+2); }"
 try 3 "int main() { int a[2]; *a = 1; *(a+1) = 2; int *p; p = a; return *p + *(p+1); }"
+try 3 "int main() { int a[2]; *a = 1; a[1] = 2; int *p; p = a; return *p+p[1]; }"
 
 echo OK
