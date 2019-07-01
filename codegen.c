@@ -219,6 +219,8 @@ void calc_ptr(Node *node) {
 
     if (lhs_ptr || rhs_ptr) {
         //printf("TESTTEST\n");
+        //printf("rhs_%d\n", rhs);
+        //printf("lhs_%d\n", lhs);
         if (rhs == 0) {
             printf("    pop rdi\n");
             printf("    pop rax\n");
@@ -262,15 +264,21 @@ int is_ptr_or_array(Node *node) {
         return ptr_type(node->type->ptr_to);
     }
     if (node->ty == ND_DEREF) {
+        //printf("TEST\n");
         Node *child = node->lhs;
         if (child->type == NULL) {
+            //printf("TEST+++++\n");
             int lhs = is_ptr_or_array(child->lhs);
             int rhs = is_ptr_or_array(child->rhs);
-            if (lhs == 0 && rhs == 0)
+            //printf("%d\n", lhs);
+            //printf("%d\n", rhs);
+            if (lhs == 0 && rhs == 0) {
+                error("ポインタじゃないよ!");
+                return 0;
+            }
+            if (lhs <= 1  && rhs <= 1)
                 return 0;
             if (lhs != 0) {
-                //printf("%d\n", lhs);
-                //printf("%d\n", rhs);
                 return lhs;
             }
             if (rhs != 0)
