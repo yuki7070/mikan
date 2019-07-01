@@ -206,7 +206,10 @@ void calc_ptr(Node *node) {
     //printf("TESTcalc2\n");
 
     int lhs_ptr = is_ptr(node->lhs);
+    //printf("TESTcalc3\n");
+    //printf("%d\n", node->rhs);
     int rhs_ptr = is_ptr(node->rhs);
+    //printf("TESTcalc4\n");
 
     if (lhs == 0 && rhs == 0)
         return;
@@ -285,13 +288,33 @@ int is_ptr_or_array(Node *node) {
 }
 
 int is_ptr(Node *node) {
+    //printf("TYPE %d\n", node->ty);
     if (node->type != NULL && node->type->ty == PTR) {
+        //printf("TEST_is_ptr\n");
         return ptr_type(node->type->ptr_to);
     }
     if (node->ty == ND_DEREF) {
         Node *child = node->lhs;
-        if (child->type->ptr_to->ty == PTR)
+        //printf("ここか！？！？_%d\n", child->ty);
+        //printf("%d\n", '+');
+        if (!child->type) {
+            //printf("are\n");
+            int left = is_ptr(child->lhs);
+            int right = is_ptr(child->rhs);
+            if (left != 0) {
+                return ptr_type(child->lhs);
+            }
+            if (right != 0) {
+                return ptr_type(child->rhs);
+            }
+            return 0;
+            
+        }
+        if (child->type->ptr_to->ty == PTR) {
+            //printf("じゃあ、ここか！？！？\n");
             return ptr_type(child);
+        }
+        //printf("じゃあ、ここか2！？！？\n");
         return 0;
     }
     if (node->lhs)
@@ -538,16 +561,18 @@ void gen(Node *node) {
     if (node->ty == ND_DEREF) {
         //printf("DEREF_START\n");
         gen(node->lhs);
+        //printf("TEST\n");
         printf("    pop rax\n");
         printf("    mov rax, [rax]\n");
         printf("    push rax\n");
 
-        int lhs_ptr = is_ptr(node->lhs);
-        int lhs_ptr_array = is_ptr_or_array(node->lhs);
-        printf("%d\n", lhs_ptr);
-        printf("%d\n", lhs_ptr_array);
+        //int lhs_ptr = is_ptr(node->lhs);
+        //int lhs_ptr_array = is_ptr_or_array(node->lhs);
+        //printf("%d\n", lhs_ptr);
+        //printf("%d\n", lhs_ptr_array);
 
-        if (is_ptr(node->lhs) != 0) {
+        if (is_ptr(node->lhs) != 0 && node->lhs->ty == ND_LVAR) {
+            //printf("TEST\n");
             printf("    pop rax\n");
             printf("    mov rax, [rax]\n");
             printf("    push rax\n");
