@@ -18,6 +18,8 @@ Node *unary();
 
 Node *lval(int ty, Node *n);
 
+int *parse_func(Node *parent, Node *node);
+
 int consume(int ty) {
     Token *t = tokens->data[pos];
 
@@ -59,12 +61,155 @@ Node *new_node_ident(int offset) {
     return node;
 }
 
+Node *parse_ident() {
+    int ty;
+
+    if (consume(TK_INT)) {
+        ty = INT;
+    } else {
+        //未定義の型
+    }
+
+    Node *node = malloc(sizeof(Node));
+
+    if (consume('*')) {
+        Type *t = malloc(sizeof(Type));
+        t->ty = PTR;
+        node->type = t;
+    }
+
+    Type *t = malloc(sizeof(Type));
+    t->ty = ty;
+
+    if (node->ty == PTR) {
+        node->type->ptr_to = t;
+    } else {
+        node->type = t;
+    }
+
+    Token *token = tokens->data[pos];
+    node->name = token->name;
+    node->token = token;
+
+    return node;
+}
+
+Node *parse_decl(Node *parent) {
+    if (!consume(TK_TYPE))
+        return NULL;
+
+    Node *node = parse_ident();
+
+    if (parse_func(parent, node) == 1)
+        return node;
+    
+    
+}
+
+int *parse_func(Node *parent, Node *node) {
+    if (!consume('('))
+        return 0;
+
+    node->args = new_vector();
+    node->ty = ND_DFUNC;
+    node->block = new_vector();
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->offset = 0;
+
+    while (!consume(')')) {
+        vec_push(node->args, expr(node));
+        consume(',');
+    }
+
+    Vector *args = node->args;
+    for (int j = 0; j < args->len; j++) {
+        Node *arg = args->data[j];
+        map_put(node->idents, arg->name, arg);
+        node->offset = arg->offset;
+    }
+
+    if (!consume('{'))
+        return 0;
+
+    while (consume('}')) {
+        vec_push(node->block, stmt(node));
+    }
+
+    map_put(parent->funcs, node->name, node);
+
+    return 1;
+    
+}
+
 void program() {
     int i = 0;
     while (!consume(TK_EOF)) {
-        code[i++] = stmt();
+        if (consume(TK_TYPE)) {
+            if (consume(TK_INT)) {
+                Node *node = lval(INT, NULL);
+                Token *t = tokens->data[pos];
+                pos++;
+                node->name = t->name;
+                node->token = t;
+
+                if (consume('(')) {
+                    node->args = new_vector();
+
+                    while (!consume(')')) {
+                        vec_push(node->args, expr());
+                        consume(',');
+                    }
+
+                    if (consume('{')) {
+                        node->ty = ND_DFUNC;
+                        //printf("TESTEARE%d\n", node->ty);
+                        node->block = new_vector();
+                        Map *func_ident = new_map();
+
+                        map_put(functions, node->name, node);
+
+                        Vector *args = node->args;
+
+                        for (int j = 0; j < args->len; j++) {
+                            Node *n = args->data[j];
+                            map_put(func_ident, n->name, (j+1)*8);
+                        }
+
+                        while (!consume('}')) {
+                            vec_push(node->block, stmt());
+                        }
+                    }
+
+                    code[i++] = node;
+                    //printf("TEST%d\n", i);
+                    continue;
+                };
+
+                if (consume('[')) {
+                    node->type->ty = ARRAY;
+                    Type *t_a = malloc(sizeof(Type));
+                    t_a->ty = INT;
+                    node->type->ptr_to = t_a;
+                    if (!consume(TK_NUM))
+                        error_at(t->input, "配列のサイズ");
+                    Token *t = tokens->data[pos-1];
+                    node->type->array_size = t->val+1;
+                    if (consume(']'))
+                        error_at(t->input, "配列のとじカッコ");
+                }
+
+                node->ty = ND_DVAR;
+                code[i++] = node;
+                continue;
+            }
+        }
+
+        error("%s", "なんかあれ");
     }
+
     code[i] = NULL;
+
     return;
 }
 

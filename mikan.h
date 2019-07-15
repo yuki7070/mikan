@@ -52,6 +52,7 @@ typedef struct Node {
     char *name;
     struct Vector *args;
     struct Map *idents;
+    struct Map *funcs;
     int is_return;
 
     struct Node *parent;
@@ -85,6 +86,7 @@ enum {
     ND_NUM = 256,
     ND_RETURN,
     ND_LVAR,
+    ND_GVAR,
     ND_DVAR,
     ND_IF,
     ND_ELSE,

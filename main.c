@@ -35,6 +35,10 @@ int main(int argc, char **argv) {
     */
 
     for (int i = 0; code[i]; i++) {
+        //printf("TEST\n");
+        Node *n = code[i];
+        //printf("TEST2\n");
+        //printf("TEST%d\n", n->ty);
         gen(code[i]);
 
         //printf("    pop rax\n");
