@@ -23,13 +23,13 @@ void func_lval(Node *parent, Node *node) {
             func_lval(parent, node->lhs);
         if (node->rhs)
             func_lval(parent, node->rhs);
-        if (node->ty == ND_IF) {
+        /*if (node->ty == ND_IF) {
             node->then->parent = parent;
             if (node->cond)
                 node->cond->parent = parent;
             if (node->els)
                 node->els->parent = parent;
-        }
+        }*/
         if (node->ty == ND_FUNC) {
             Vector *args = node->args;
             for (int j = 0; j < args->len; j++) {
@@ -126,7 +126,7 @@ void gen_lval(Node *node) {
 
     if (node->ty != ND_LVAR && node->ty != ND_DVAR) {
         printf("%d\n", node->ty);
-        printf("%d\n", '+');
+        printf("%s\n", node->name);
         error("代入の左辺値が変数ではありません");
     }
 
@@ -369,8 +369,29 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_IF) {
+        
         int j1 = jump_count++;
         int j2 = jump_count++;
+        printf("%d\n", node->offset);
+        Map *idents = node->idents;
+        if (map_exists(idents, "b")) {
+            Node *n = map_get(idents, "b");
+            printf("var name: %s\n", n->name);
+            printf("offset: %d\n", n->offset);
+            printf("type: %d\n", n->type->ty);
+        }
+        printf("    push rbp\n");
+        printf("    mov rbp, rsp\n");
+        printf("    sub rsp, %d\n", node->offset);
+        gen(node->cond);
+        printf("TEST\n");
+        Vector *body = node->then;
+        printf("body len: %d\n", body->len);
+        for (int j = 0; j < body->len; j++) {
+            gen(body->data[j]);
+            printf("区切り\n");
+        }
+        /*
         Map *idents = new_map();
         node->idents = idents;
         func_lval(node, node->cond);
@@ -406,7 +427,7 @@ void gen(Node *node) {
         printf(".Lend%d:\n", j2);
         printf("    mov rsp, rbp\n");
         printf("    pop rbp\n");
-
+        */
         return;
     }
 
@@ -505,14 +526,14 @@ void gen(Node *node) {
         node->idents = idents;
 
         int stuck_size = 0;
-
+    /*
         for (int j = 0; j < args->len; j++) {
             func_lval(node, args->data[j]);
         }
         for (int j = 0; j < block->len; j++) {
             func_lval(node, block->data[j]);
         }
-
+    */
         for (int j = 0; j < idents->vals->len; j++) {
             Node *n = idents->vals->data[j];
             if (stuck_size < n->offset) {
@@ -590,12 +611,23 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_LVAR) {
+        printf("VAR INFO\n");
+        printf("var address: %d\n", node);
+        printf("var name: %s\n", node->name);
+        printf("var parent: %d\n", node->parent);
+        printf("var offset: %d\n", node->offset);
+        int e = map_exists(node->parent->idents, node->name);
+        printf("var exist: %d\n", e);
+        if (node->parent->parent) {
+            printf("var parent->parent: %d\n", node->parent->parent);
+        }
         gen_lval(node);
         printf("    pop rax\n");
         
+        /*
         if (node->type->ty != PTR && node->type->ty != ARRAY) {
             printf("    mov rax, [rax]\n");
-        }
+        }*/
         
         printf("    push rax\n");
         return;
@@ -609,7 +641,9 @@ void gen(Node *node) {
 
     if (node->ty == '=') {
         //printf("TEST\n");
-        gen_lval(node->lhs);
+        //gen_lval(node->lhs);
+        gen(node->lhs);
+        printf("TESTrhs: %d\n", node->lhs->parent);
         gen(node->rhs);
 
         printf("    pop rdi\n");

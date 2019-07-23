@@ -6,19 +6,19 @@
 int pos = 0;
 
 Node *function();
-Node *stmt();
-Node *expr();
-Node *assign();
-Node *equality();
-Node *relational();
-Node *add();
-Node *mul();
-Node *term();
-Node *unary();
+Node *stmt(Node *parent);
+Node *expr(Node *parent);
+Node *assign(Node *parent);
+Node *equality(Node *parent);
+Node *relational(Node *parent);
+Node *add(Node *parent);
+Node *mul(Node *parent);
+Node *term(Node *parent);
+Node *unary(Node *parent);
 
-Node *lval(int ty, Node *n);
+Node *init_func_arg(Node *parent);
 
-int *parse_func(Node *parent, Node *node);
+int new_func(Node *parent, Node *node);
 
 int consume(int ty) {
     Token *t = tokens->data[pos];
@@ -54,20 +54,77 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *new_node_ident(int offset) {
-    Node *node = malloc(sizeof(Node));
-    node->ty = ND_LVAR;
-    node->offset = offset;
-    return node;
+int new_decl_func(Node *parent, Node *node) {
+    if (!consume('('))
+        return 0;
+
+    node->args = new_vector();
+    node->ty = ND_DFUNC;
+    node->block = new_vector();
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->offset = 0;
+
+    while (!consume(')')) {
+        vec_push(node->args, init_func_arg(node));
+        consume(',');
+    }
+
+    Vector *args = node->args;
+    for (int j = 0; j < args->len; j++) {
+        Node *arg = args->data[j];
+        map_put(node->idents, arg->name, arg);
+        node->offset = arg->offset;
+    }
+
+    if (!consume('{')) {
+        printf("error\n");
+        return 1;
+    }
+
+    while (!consume('}')) {
+        vec_push(node->block, stmt(node));
+    }
+
+    map_put(parent->funcs, node->name, node);
+
+    return 1;
 }
 
-Node *parse_ident() {
+int new_decl_var(Node *parent, Node *node) {
+    node->ty = ND_LVAR;
+    int size = 0;
+    switch (node->type->ty) {
+        case INT:
+            size = 4;
+            break;
+        case PTR:
+            size = 8;
+            break;
+        case ARRAY:
+            size = node->type->array_size;
+            break;
+        default:
+            return 0;
+    }
+    parent->offset = parent->offset + size;
+    node->offset = parent->offset;
+    map_put(parent->idents, node->name, node);
+
+    if (!consume(';'))
+        return 0;
+    
+    return 1;
+}
+
+Node *init_type() {
     int ty;
 
     if (consume(TK_INT)) {
         ty = INT;
     } else {
         //未定義の型
+        return NULL;
     }
 
     Node *node = malloc(sizeof(Node));
@@ -81,15 +138,70 @@ Node *parse_ident() {
     Type *t = malloc(sizeof(Type));
     t->ty = ty;
 
-    if (node->ty == PTR) {
+    if (node->type != NULL) {
         node->type->ptr_to = t;
     } else {
         node->type = t;
     }
 
-    Token *token = tokens->data[pos];
-    node->name = token->name;
-    node->token = token;
+    return node;
+}
+
+Node *init_ident(Node *parent, Node *node) {
+
+    if (!consume(TK_IDENT))
+        return NULL;
+
+    Token *t = tokens->data[pos-1];
+    node->name = t->name;
+    node->token = t;
+    node->parent = parent;
+
+
+    if (!consume('[')) {
+        return node;
+    }
+
+    //配列である場合
+    node->type->ty = ARRAY;
+    if (!consume(TK_NUM)) {
+
+    }
+    
+    Token *t_1 = tokens->data[pos-1];
+    node->type->array_size = t_1->val + 1;
+
+    if (!consume(']'))
+        //error
+
+    return node;
+}
+
+Node *init_func_arg(Node *parent) {
+
+    if (!consume(TK_TYPE))
+        return NULL;
+    Node *node = init_type();
+    node = init_ident(parent, node);
+
+    node->ty = ND_DVAR;
+    int size = 0;
+    switch (node->type->ty) {
+        case INT:
+            size = 4;
+            break;
+        case PTR:
+            size = 8;
+            break;
+        case ARRAY:
+            size = node->type->array_size;
+            break;
+        default:
+            return 0;
+    }
+    parent->offset = parent->offset + size;
+    node->offset = parent->offset;
+    map_put(parent->idents, node->name, node);
 
     return node;
 }
@@ -97,115 +209,145 @@ Node *parse_ident() {
 Node *parse_decl(Node *parent) {
     if (!consume(TK_TYPE))
         return NULL;
+    Node *node = init_type();
+    node = init_ident(parent, node);
 
-    Node *node = parse_ident();
-
-    if (parse_func(parent, node) == 1)
+    if (new_decl_func(parent, node) == 1) {
         return node;
+    }
     
-    
+    if (new_decl_var(parent, node) == 1) {
+        return node;
+    }
+
+    printf("ERROR\n");
 }
 
-int *parse_func(Node *parent, Node *node) {
-    if (!consume('('))
-        return 0;
+Node *parse_return(Node *parent) {
+    if (!consume(TK_RETURN))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_RETURN;
+    node->lhs = expr(parent);
+
+    if (!consume(';')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "';'ではないトークンです");
+    }
+
+    return node;
+}
+
+Node *parse_lvar(Node *parent) {
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_LVAR;
+    node = init_ident(parent, node);
+    
+    if (node == NULL)
+        return NULL;
+
+    if (consume('(')) {
+        pos--;
+        return NULL;
+    }
+    
+    printf("=======================\n");
+    printf("var address: %d\n", node);
+    printf("var name: %s\n", node->name);
+    printf("var parent: %d\n", node->parent);
+    printf("var offset: %d\n", node->offset);
+
+    return node;
+}
+
+Node *parse_func(Node *parent) {
+    Node *node = malloc(sizeof(Node));
+    node = init_ident(parent, node);
+
+    if (node == NULL)
+        return NULL;
+
+    if (!consume('(')) {
+        pos--;
+        return NULL;
+    }
 
     node->args = new_vector();
-    node->ty = ND_DFUNC;
-    node->block = new_vector();
-    node->idents = new_map();
-    node->funcs = new_map();
-    node->offset = 0;
+    node->ty = ND_FUNC;
 
     while (!consume(')')) {
         vec_push(node->args, expr(node));
         consume(',');
     }
 
-    Vector *args = node->args;
-    for (int j = 0; j < args->len; j++) {
-        Node *arg = args->data[j];
-        map_put(node->idents, arg->name, arg);
-        node->offset = arg->offset;
+    if (map_exists(parent->funcs, node->name) == 0 && map_exists(global_node->funcs, node->name) == 0) {
+        //error
+        printf("ERROR NOT EXIST FUNCTION\n");
+        return NULL;
     }
 
-    if (!consume('{'))
-        return 0;
+    return node;
+}
 
-    while (consume('}')) {
-        vec_push(node->block, stmt(node));
+Node *parse_num(Node *parent) {
+    if (!consume(TK_NUM))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    Token *t = tokens->data[pos-1];
+    node->ty = ND_NUM;
+    node->val = t->val;
+
+    return node;
+}
+
+Node *parse_if(Node *parent) {
+    if (!consume(TK_IF))
+        return NULL;
+
+    if (!consume('(')) {
+        printf("ERROR if文の(");
+        return NULL;
     }
 
-    map_put(parent->funcs, node->name, node);
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_IF;
+    node->then = new_vector();
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->offset = 0;
 
-    return 1;
-    
+    node->cond = expr(node);
+
+    if (!consume(')')) {
+        printf("ERROR if文の)");
+        return NULL;
+    }
+
+    if (!consume('{')) {
+        printf("ERROR if文の{");
+        return NULL;
+    }
+
+    while (!consume('}')) {
+        vec_push(node->then, stmt(node));
+    }
+
+    if (consume(TK_ELSE))
+        return node->els = stmt(node);
+
+    return node;
 }
 
 void program() {
     int i = 0;
+    global_node = malloc(sizeof(Node));
+    global_node->idents = new_map();
+    global_node->funcs = new_map();
     while (!consume(TK_EOF)) {
-        if (consume(TK_TYPE)) {
-            if (consume(TK_INT)) {
-                Node *node = lval(INT, NULL);
-                Token *t = tokens->data[pos];
-                pos++;
-                node->name = t->name;
-                node->token = t;
-
-                if (consume('(')) {
-                    node->args = new_vector();
-
-                    while (!consume(')')) {
-                        vec_push(node->args, expr());
-                        consume(',');
-                    }
-
-                    if (consume('{')) {
-                        node->ty = ND_DFUNC;
-                        //printf("TESTEARE%d\n", node->ty);
-                        node->block = new_vector();
-                        Map *func_ident = new_map();
-
-                        map_put(functions, node->name, node);
-
-                        Vector *args = node->args;
-
-                        for (int j = 0; j < args->len; j++) {
-                            Node *n = args->data[j];
-                            map_put(func_ident, n->name, (j+1)*8);
-                        }
-
-                        while (!consume('}')) {
-                            vec_push(node->block, stmt());
-                        }
-                    }
-
-                    code[i++] = node;
-                    //printf("TEST%d\n", i);
-                    continue;
-                };
-
-                if (consume('[')) {
-                    node->type->ty = ARRAY;
-                    Type *t_a = malloc(sizeof(Type));
-                    t_a->ty = INT;
-                    node->type->ptr_to = t_a;
-                    if (!consume(TK_NUM))
-                        error_at(t->input, "配列のサイズ");
-                    Token *t = tokens->data[pos-1];
-                    node->type->array_size = t->val+1;
-                    if (consume(']'))
-                        error_at(t->input, "配列のとじカッコ");
-                }
-
-                node->ty = ND_DVAR;
-                code[i++] = node;
-                continue;
-            }
-        }
-
-        error("%s", "なんかあれ");
+        code[i++] = parse_decl(global_node);
     }
 
     code[i] = NULL;
@@ -213,44 +355,17 @@ void program() {
     return;
 }
 
-Node *stmt() {
+Node *stmt(Node *parent) {
     Node *node;
 
-    if (consume(TK_RETURN)) {
-        node = malloc(sizeof(Node));
-        node->ty = ND_RETURN;
-        node->lhs = expr();
-
-        if (!consume(';')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "';'ではないトークンです");
-        }
-
+    if ((node = parse_decl(parent)) != NULL)
         return node;
-    }
 
-    if (consume(TK_IF)) {
-        if (!consume('(')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "if文の'('がありません");
-        }
-
-        node = malloc(sizeof(Node));
-        node->ty = ND_IF;
-        node->cond = expr();
-
-        if (!consume(')')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "if文の')'がありません");
-        }
-
-        node->then = stmt();
-
-        if (consume(TK_ELSE))
-            node->els = stmt();
-
+    if ((node = parse_return(parent)) != NULL)
         return node;
-    }
+
+    if ((node = parse_if(parent)) != NULL)
+        return node;
     
     if (consume(TK_WHILE)) {
         if (!consume('(')) {
@@ -260,14 +375,14 @@ Node *stmt() {
 
         node = malloc(sizeof(Node));
         node->ty = ND_WHILE;
-        node->cond = expr();
+        node->cond = expr(parent);
 
         if (!consume(')')) {
             Token *t = tokens->data[pos];
             error_at(t->input, "while文の')'がありません");
         }
 
-        node->loop = stmt();
+        node->loop = stmt(parent);
 
         return node;
     }
@@ -282,7 +397,7 @@ Node *stmt() {
         node->ty = ND_FOR;
 
         if (!consume(';')) {
-            node->init = expr();
+            node->init = expr(parent);
             if (!consume(';')) {
                 Token *t = tokens->data[pos];
                 error_at(t->input, "for文の';'がありません");
@@ -290,7 +405,7 @@ Node *stmt() {
         }
     
         if (!consume(';')) {
-            node->cond = expr();
+            node->cond = expr(parent);
             if (!consume(';')) {
                 Token *t = tokens->data[pos];
                 error_at(t->input, "for文の';'がありません");
@@ -298,14 +413,14 @@ Node *stmt() {
         }
 
         if (!consume(')')) {
-            node->inc = expr();
+            node->inc = expr(parent);
             if (!consume(')')) {
                 Token *t = tokens->data[pos];
                 error_at(t->input, "for文の')'がありません");
             }
         }
 
-        node->loop = stmt();
+        node->loop = stmt(parent);
 
         return node;
     }
@@ -316,13 +431,13 @@ Node *stmt() {
         node->block = new_vector();
 
         while (!consume('}')) {
-            vec_push(node->block, stmt());
+            vec_push(node->block, stmt(node));
         }
 
         return node;
     }
 
-    node = expr();
+    node = expr(parent);
 
     if (node->ty != ND_DFUNC && !consume(';')) {
         Token *t = tokens->data[pos];
@@ -332,43 +447,43 @@ Node *stmt() {
     return node;
 }
 
-Node *expr() {
-    return assign();
+Node *expr(Node *parent) {
+    return assign(parent);
 }
 
-Node *assign() {
-    Node *node = equality();
+Node *assign(Node *parent) {
+    Node *node = equality(parent);
 
     if (consume('='))
-        node = new_node('=', node, assign());
+        node = new_node('=', node, assign(parent));
     return node;
 }
 
-Node *equality() {
-    Node *node = relational();
+Node *equality(Node *parent) {
+    Node *node = relational(parent);
 
     for (;;) {
         if (consume(TK_EQ))
-            node = new_node(ND_EQ, node, relational());
+            node = new_node(ND_EQ, node, relational(parent));
         else if (consume(TK_NE))
-            node = new_node(ND_NE, node, relational());
+            node = new_node(ND_NE, node, relational(parent));
         else
             return node;
     }
 }
 
-Node *relational() {
-    Node *node = add();
+Node *relational(Node *parent) {
+    Node *node = add(parent);
 
     for (;;) {
         if (consume('<'))
-            node = new_node('<', node, add());
+            node = new_node('<', node, add(parent));
         else if (consume('>'))
-            node = new_node('>', node, add());
+            node = new_node('>', node, add(parent));
         else if (consume(TK_LE))
-            node = new_node(ND_LE, node, add());
+            node = new_node(ND_LE, node, add(parent));
         else if (consume(TK_GE))
-            node = new_node(ND_GE, node, add());
+            node = new_node(ND_GE, node, add(parent));
         else
             return node;
     }
@@ -377,166 +492,62 @@ Node *relational() {
 }
 
 
-Node *add() {
-    Node *node = mul();
+Node *add(Node *parent) {
+    Node *node = mul(parent);
 
     for (;;) {
         if (consume('+'))
-            node = new_node('+', node, mul());
+            node = new_node('+', node, mul(parent));
         else if (consume('-'))
-            node = new_node('-', node, mul());
+            node = new_node('-', node, mul(parent));
         else
             return node;
     }
 }
 
-Node *mul() {
-    Node *node = unary();
+Node *mul(Node *parent) {
+    Node *node = unary(parent);
 
     for (;;) {
         if (consume('*')) {
-            node = new_node('*', node, unary());
+            node = new_node('*', node, unary(parent));
          } else if (consume('/'))
-            node = new_node('/', node, unary());
+            node = new_node('/', node, unary(parent));
         else
             return node;
     }
 }
 
-Node *unary() {
+Node *unary(Node *parent) {
     if (consume(TK_SIZEOF)) {
         Node *node = malloc(sizeof(Node));
         node->ty = ND_SIZEOF;
         Type *t = malloc(sizeof(Type));
         t->ty = INT;
         node->type = t;
-        node->lhs = unary();
+        node->lhs = unary(parent);
         return node;
     }
     if (consume('+'))
-        return term();
+        return term(parent);
     if (consume('-'))
-        return new_node('-', new_node_num(0), term());
-    return term();
+        return new_node('-', new_node_num(0), term(parent));
+    return term(parent);
 }
 
-Node *term() {
+Node *term(Node *parent) {
     Token *t = tokens->data[pos];
+    Node *node = malloc(sizeof(Node));
 
-    if (consume('(')) {
-        Node *node = expr();
-        if (!consume(')')) {
-            error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
-        }
+    if ((node = parse_func(parent)) != NULL) {
         return node;
     }
 
-    if (consume(TK_NUM)) {
-        return new_node_num(t->val);
+    if ((node = parse_num(parent)) != NULL) {
+        return node;
     }
 
-    if (consume(TK_TYPE)) {
-        
-        if (consume(TK_INT)) {
-            Node *node = lval(INT, NULL);
-            Token *t = tokens->data[pos];
-            pos++;
-
-            node->name = t->name;
-            node->token = t;
-
-            if (consume('(')) {
-               node->args = new_vector(); 
-
-               while (!consume(')')) {
-                    vec_push(node->args, expr());
-                    consume(',');
-                }
-
-                if (consume('{')) {
-                    node->ty = ND_DFUNC;
-                    node->block = new_vector();
-                    Map *func_ident = new_map();
-
-                    map_put(functions, node->name, node);
-
-                    Vector *args = node->args;
-
-                    for (int j = 0; j < args->len; j++) {
-                        Node *n = args->data[j];
-                        map_put(func_ident, n->name, (j+1)*8);
-                    }
-
-                    while (!consume('}')) {
-                        vec_push(node->block, stmt());
-                    }
-                } else {
-                    node->ty = ND_FUNC;
-                }
-
-                return node;
-            }
-
-            if (consume('[')) {
-                node->type->ty = ARRAY;
-                Type *t_a = malloc(sizeof(Type));
-                t_a->ty = INT;
-                node->type->ptr_to = t_a;
-                if (!consume(TK_NUM))
-                    error_at(t->input, "配列のサイズがぁぁぁあ？？？");
-                Token *t = tokens->data[pos-1];
-                node->type->array_size = t->val + 1;
-                if (!consume(']'))
-                    error_at(t->input, "配列のとじ括弧がぁぁ？？？");
-            }
-
-            node->ty = ND_DVAR;
-
-            return node;
-        }
-
-        error_at(t->input, "不明な型です");
-    }
-
-    if (consume(TK_IDENT)) {
-
-        Node *node = malloc(sizeof(Node));
-        node->token = t;
-        node->name = t->name;
-
-        if (consume('(')) {
-            node->args = new_vector();
-
-            while (!consume(')')) {
-                vec_push(node->args, expr());
-                consume(',');
-            }
-            
-            if (consume('{')) {
-                error_at(t->input, "型が定義されていない関数宣言です");
-            }
-            
-            node->ty = ND_FUNC;
-
-            return node;
-        }
-
-        node->ty = ND_LVAR;
-
-        if (consume('[')) {
-
-            Node *dererf = malloc(sizeof(Node));
-            dererf->token = t;
-            dererf->ty = ND_DEREF;
-            dererf->lhs = new_node('+', node, expr());
-
-            if (!consume(']'))
-                error_at(t->input, "配列のとじ括弧がぁぁ？？？");
-            
-            return dererf;
-            
-        }
-
+    if ((node = parse_lvar(parent)) != NULL) {
         return node;
     }
 
@@ -544,7 +555,7 @@ Node *term() {
         Node *node = malloc(sizeof(Node));
         node->token = t;
         node->ty = ND_DEREF;
-        node->lhs = term();
+        node->lhs = term(parent);
         return node;
     }
 
@@ -552,52 +563,11 @@ Node *term() {
         Node *node = malloc(sizeof(Node));
         node->token = t;
         node->ty = ND_ADDR;
-        node->lhs = term();
+        node->lhs = term(parent);
         return node;
     }
     
+    printf("%d\n", t->ty);
     error_at(t->input, "数値でも開き括弧でもないトークンです");
     exit(1);
-}
-
-Node *lval(int ty, Node *n) {
-    Node *node = malloc(sizeof(Node));
-
-    if (n != NULL) {
-        node = n;
-    }
-
-    if (read_ahead(TK_IDENT)) {
-        Type *t = malloc(sizeof(Type));
-        t->ty = ty;
-        if (n != NULL) {
-            node->type->ptr_to = t;
-        } else {
-            node->type = t;
-        }
-        return node;
-    }
-
-    if (consume('*')) {
-        Type *t = malloc(sizeof(Type));
-        t->ty = PTR;
-        node->type = t;
-        return lval(ty, node);
-    }
-
-    Token *t = tokens->data[pos];
-    error_at(t->input, "不明な型でしゅ");
-    exit(1);
-}
-
-Node *typed_val(int ty, Node *n) {
-    Node *node = malloc(sizeof(Node));
-
-    if (n != NULL) {
-        node = n;
-    }
-
-    Type *t = malloc(sizeof(Type));
-    t->ty = ty;
-    node->type = t;
 }

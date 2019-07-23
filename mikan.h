@@ -39,7 +39,7 @@ typedef struct Node {
     //while (cond) loop
     //for (init; cond; inc) loop
     struct Node *cond;
-    struct Node *then;
+    struct Vector *then;
     struct Node *els;
 
     struct Node *loop;
@@ -140,3 +140,5 @@ enum {
 };
 
 Vector *tokenize();
+
+Node *global_node;
