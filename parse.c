@@ -57,7 +57,7 @@ Node *new_node_num(int val) {
 int new_decl_func(Node *parent, Node *node) {
     if (!consume('('))
         return 0;
-
+    
     node->args = new_vector();
     node->ty = ND_DFUNC;
     node->block = new_vector();
@@ -82,11 +82,11 @@ int new_decl_func(Node *parent, Node *node) {
         return 1;
     }
 
+    map_put(parent->funcs, node->name, node);
+
     while (!consume('}')) {
         vec_push(node->block, stmt(node));
     }
-
-    map_put(parent->funcs, node->name, node);
 
     return 1;
 }
@@ -94,22 +94,36 @@ int new_decl_func(Node *parent, Node *node) {
 int new_decl_var(Node *parent, Node *node) {
     node->ty = ND_LVAR;
     int size = 0;
+    int s = 0;
     switch (node->type->ty) {
         case INT:
-            size = 4;
+            size = 8;
             break;
         case PTR:
             size = 8;
             break;
         case ARRAY:
-            size = node->type->array_size;
+            switch (node->type->ptr_to->ty) {
+            case INT:
+                s = 8;
+                break;
+            case PTR:
+                s = 8;
+                break;
+            }
+            size = node->type->array_size * s;
             break;
         default:
             return 0;
     }
+
     parent->offset = parent->offset + size;
     node->offset = parent->offset;
     map_put(parent->idents, node->name, node);
+
+    /*if (parent->parent) {
+        parent->parent->offset += parent->offset;
+    }*/
 
     if (!consume(';'))
         return 0;
@@ -147,32 +161,51 @@ Node *init_type() {
     return node;
 }
 
-Node *init_ident(Node *parent, Node *node) {
-
-    if (!consume(TK_IDENT))
+Node *init_func_ident(Node *parent, Node *node) {
+    if (!consume(TK_IDENT)) {
         return NULL;
+    }
 
     Token *t = tokens->data[pos-1];
     node->name = t->name;
     node->token = t;
     node->parent = parent;
 
+    return node;
+}
+
+Node *init_ident(Node *parent, Node *node) {
+    if (!consume(TK_IDENT)) {
+        return NULL;
+    }
+
+    Token *t = tokens->data[pos-1];
+    node->name = t->name;
+    node->token = t;
+    node->parent = parent;
 
     if (!consume('[')) {
         return node;
     }
 
     //配列である場合
-    node->type->ty = ARRAY;
+    Type *ty_1 = node->type;
+    Type *ty_2 = malloc(sizeof(Type));
+    ty_2->ty = ARRAY;
+    ty_2->ptr_to = ty_1;
+    node->type = ty_2;
     if (!consume(TK_NUM)) {
-
+        printf("ERROR\n");
+        return NULL;
     }
     
     Token *t_1 = tokens->data[pos-1];
-    node->type->array_size = t_1->val + 1;
+    node->type->array_size = t_1->val;
 
-    if (!consume(']'))
-        //error
+    if (!consume(']')) {
+        printf("ERROR\n");
+        return NULL;
+    }
 
     return node;
 }
@@ -182,13 +215,13 @@ Node *init_func_arg(Node *parent) {
     if (!consume(TK_TYPE))
         return NULL;
     Node *node = init_type();
-    node = init_ident(parent, node);
+    node = init_func_ident(parent, node);
 
     node->ty = ND_DVAR;
     int size = 0;
     switch (node->type->ty) {
         case INT:
-            size = 4;
+            size = 8;
             break;
         case PTR:
             size = 8;
@@ -211,7 +244,7 @@ Node *parse_decl(Node *parent) {
         return NULL;
     Node *node = init_type();
     node = init_ident(parent, node);
-
+    
     if (new_decl_func(parent, node) == 1) {
         return node;
     }
@@ -245,26 +278,23 @@ Node *parse_lvar(Node *parent) {
     node->ty = ND_LVAR;
     node = init_ident(parent, node);
     
-    if (node == NULL)
-        return NULL;
-
-    if (consume('(')) {
-        pos--;
+    if (node == NULL) {
         return NULL;
     }
-    
-    printf("=======================\n");
-    printf("var address: %d\n", node);
-    printf("var name: %s\n", node->name);
-    printf("var parent: %d\n", node->parent);
-    printf("var offset: %d\n", node->offset);
 
+    if (node->type) {
+        Node *indire = malloc(sizeof(Node));
+        indire->ty = ND_DEREF;
+        indire->lhs = new_node('+', node, new_node_num(node->type->array_size));
+        return indire;
+    }
+    
     return node;
 }
 
 Node *parse_func(Node *parent) {
     Node *node = malloc(sizeof(Node));
-    node = init_ident(parent, node);
+    node = init_func_ident(parent, node);
 
     if (node == NULL)
         return NULL;
@@ -278,7 +308,7 @@ Node *parse_func(Node *parent) {
     node->ty = ND_FUNC;
 
     while (!consume(')')) {
-        vec_push(node->args, expr(node));
+        vec_push(node->args, expr(parent));
         consume(',');
     }
 
@@ -295,10 +325,8 @@ Node *parse_num(Node *parent) {
     if (!consume(TK_NUM))
         return NULL;
 
-    Node *node = malloc(sizeof(Node));
     Token *t = tokens->data[pos-1];
-    node->ty = ND_NUM;
-    node->val = t->val;
+    Node *node = new_node_num(t->val);
 
     return node;
 }
@@ -317,6 +345,7 @@ Node *parse_if(Node *parent) {
     node->then = new_vector();
     node->idents = new_map();
     node->funcs = new_map();
+    node->parent = parent;
     node->offset = 0;
 
     node->cond = expr(node);
@@ -335,9 +364,63 @@ Node *parse_if(Node *parent) {
         vec_push(node->then, stmt(node));
     }
 
-    if (consume(TK_ELSE))
-        return node->els = stmt(node);
+    if (!consume(TK_ELSE))
+        return node;
 
+    node->els = new_vector();
+
+    if (!consume('{')) {
+        printf("ERROR if文の{");
+        return NULL;
+    }
+
+    while (!consume('}')) {
+        vec_push(node->els, stmt(node));
+    }
+    
+    return node;
+}
+
+Node *parse_indirection(Node *parent) {
+    if (!consume('*'))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_DEREF;
+    
+    node->lhs = term(parent);
+    if (node->lhs == NULL)
+        return NULL;
+
+    return node;
+}
+
+Node *parse_address(Node *parent) {
+    if (!consume('&'))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_ADDR;
+
+    node->lhs = term(parent);
+    if (node->lhs == NULL)
+        return NULL;
+
+    return node;
+}
+
+Node *parse_sizeof(Node *parent) {
+    if (!consume(TK_SIZEOF))
+        return NULL;
+    
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_SIZEOF;
+    node->parent = parent;
+    Type *t = malloc(sizeof(Type));
+    t->ty = INT;
+    node->type = t;
+
+    node->lhs = unary(parent);
     return node;
 }
 
@@ -358,8 +441,9 @@ void program() {
 Node *stmt(Node *parent) {
     Node *node;
 
-    if ((node = parse_decl(parent)) != NULL)
+    if ((node = parse_decl(parent)) != NULL) {
         return node;
+    }
 
     if ((node = parse_return(parent)) != NULL)
         return node;
@@ -454,8 +538,10 @@ Node *expr(Node *parent) {
 Node *assign(Node *parent) {
     Node *node = equality(parent);
 
-    if (consume('='))
+    if (consume('=')) {
         node = new_node('=', node, assign(parent));
+    }
+        
     return node;
 }
 
@@ -519,6 +605,12 @@ Node *mul(Node *parent) {
 }
 
 Node *unary(Node *parent) {
+    Node *node = malloc(sizeof(Node));
+
+    if ((node = parse_sizeof(parent)) != NULL) {
+        return node;
+    }
+
     if (consume(TK_SIZEOF)) {
         Node *node = malloc(sizeof(Node));
         node->ty = ND_SIZEOF;
@@ -539,6 +631,14 @@ Node *term(Node *parent) {
     Token *t = tokens->data[pos];
     Node *node = malloc(sizeof(Node));
 
+    if (consume('(')) {
+        Node *node = expr(parent);
+        if (!consume(')')) {
+            error_at(t->input, "開き括弧に対応する閉じ括弧がありません");
+        }
+        return node;
+    }
+
     if ((node = parse_func(parent)) != NULL) {
         return node;
     }
@@ -551,19 +651,11 @@ Node *term(Node *parent) {
         return node;
     }
 
-    if (consume('*')) {
-        Node *node = malloc(sizeof(Node));
-        node->token = t;
-        node->ty = ND_DEREF;
-        node->lhs = term(parent);
+    if ((node = parse_indirection(parent)) != NULL) {
         return node;
     }
 
-    if (consume('&')) {
-        Node *node = malloc(sizeof(Node));
-        node->token = t;
-        node->ty = ND_ADDR;
-        node->lhs = term(parent);
+    if ((node = parse_address(parent)) != NULL) {
         return node;
     }
     

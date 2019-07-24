@@ -40,7 +40,7 @@ typedef struct Node {
     //for (init; cond; inc) loop
     struct Node *cond;
     struct Vector *then;
-    struct Node *els;
+    struct Vector *els;
 
     struct Node *loop;
 
