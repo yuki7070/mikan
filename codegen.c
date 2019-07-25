@@ -79,6 +79,8 @@ int var_offset(Node *parent, Node *node) {
 }
 
 Node *var_info(Node *parent, Node *node) {
+    if (!parent)
+        return NULL;
     if (!parent->idents)
         return NULL;
 
@@ -92,6 +94,32 @@ Node *var_info(Node *parent, Node *node) {
     }
 
     return NULL;
+}
+
+int node_type(Node *node) {
+    Node *n = malloc(sizeof(Node));
+    if (node->ty == ND_DEREF) {
+        n = var_info(node->lhs->parent, node->lhs);
+        if (n != NULL)
+            return type_size(n->type->ptr_to->ty);
+
+        n = var_info(node->lhs->lhs->parent, node->lhs->lhs);
+        if (n != NULL)
+            return type_size(n->type->ptr_to->ty);
+
+        n = var_info(node->lhs->rhs->parent, node->lhs->rhs);
+        if (n != NULL)
+            return type_size(n->type->ptr_to->ty);
+    }
+
+    if (node->ty == ND_ADDR) {
+        return type_size(PTR);
+    }
+
+    if (node->ty == ND_LVAR) {
+        n = var_info(node->parent, node);
+        return type_size(n->type->ty);
+    }
 }
 
 void calc_ptr_stuck(int left_ty, int right_ty,  Node *node) {
@@ -245,7 +273,7 @@ void gen_local_var(Node *node) {
     } else if (size == 1) {
         printf("    mov al, [rax]\n");
     }
-    //printf("    mov rax, [rax]\n");
+
     printf("    push rax\n");
     return;
 }
@@ -275,10 +303,7 @@ void gen_assign(Node *node) {
         gen(node->rhs);
     }
     
-    printf("TESTTEST\n");
-    Node *lhs_node = var_info(node->lhs->parent, node->lhs);
-    printf("TESTTEST\n");
-    int size = type_size(lhs_node->type->ty);
+    int size = node_type(node->lhs);
     
     printf("    pop rdi\n");
     printf("    pop rax\n");
@@ -288,9 +313,10 @@ void gen_assign(Node *node) {
     } else if (size == 4) {
         printf("    mov [rax], edi\n");
     } else if (size == 1) {
+        printf("are : %s\n", node->lhs->name);
         printf("    mov [rax], dil\n");
     }
-    //printf("    mov [rax], rdi\n");
+    
     printf("    push rdi\n");
     return;
 }
@@ -303,28 +329,8 @@ void gen_indirection(Node *node) {
         if (info->type->ty == ARRAY)
             return;
     }
-    /*
-    Node *info = malloc(sizeof(Node));
-    if (!node->lhs->parent) {
-        info = var_info(node->lhs->lhs->parent, node->lhs->lhs);
-        if (!info) {
-            info = var_info(node->lhs->rhs->parent, node->lhs->rhs);
-        }
-    } else {
-        info = var_info(node->lhs->parent, node->lhs);
-    }
-    
-    int size = type_size(info->type->ty);
-    */
+
     printf("    pop rax\n");
-    /*
-    if (size == 8) {
-        printf("    mov rax, [rax]\n");
-    } else if (size == 4) {
-        printf("    mov eax, DWORD PTR [rax]\n");
-    } else if (size == 1) {
-        printf("    mov al, BYTE PTR [rax]\n");
-    }*/
     printf("    mov rax, [rax]\n");
     printf("    push rax\n");
     
