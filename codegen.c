@@ -38,18 +38,6 @@ void gen_lval(Node *node) {
     return;
 }
 
-int type_stuck_size(int ty) {
-    switch (ty) {
-    case INT:
-        return 4;
-    case CHAR:
-        return 1;
-    case PTR:
-        return 8;
-    }
-    return 0;
-}
-
 int type_size(int ty) {
     switch (ty) {
     case INT:
@@ -134,7 +122,7 @@ void calc_ptr_stuck(int left_ty, int right_ty,  Node *node) {
     } else {
         gen(node);
         if (right_ty) {
-            printf("    push %d\n", type_stuck_size(right_ty));
+            printf("    push %d\n", type_size(right_ty));
             printf("    pop rdi\n");
             printf("    pop rax\n");
             printf("    imul rax, rdi\n");
@@ -260,9 +248,7 @@ void gen_decl_func(Node *node) {
 void gen_local_var(Node *node) {
     gen_lval(node);
 
-    
-    Node *info = var_info(node->parent, node);
-    int size = type_size(info->type->ty);
+    int size = node_type(node);
     
     printf("    pop rax\n");
     
