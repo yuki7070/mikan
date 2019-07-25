@@ -54,6 +54,13 @@ Node *new_node_num(int val) {
     return node;
 }
 
+Node *conv_arr_to_ptr(Node *lhs) {
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_DEREF;
+    node->lhs = new_node('+', lhs, new_node_num(lhs->type->array_size));
+    return node;
+}
+
 int new_decl_func(Node *parent, Node *node) {
     if (!consume('('))
         return 0;
@@ -91,13 +98,24 @@ int new_decl_func(Node *parent, Node *node) {
     return 1;
 }
 
+void calc_offset(Node *parent, int size) {
+    if (parent->parent) {
+        parent->offset = parent->parent->offset + size;
+        return calc_offset(parent->parent, size);
+    }
+    parent->offset += size;
+    return;
+}
+
 int new_decl_var(Node *parent, Node *node) {
-    node->ty = ND_LVAR;
     int size = 0;
     int s = 0;
     switch (node->type->ty) {
         case INT:
-            size = 8;
+            size = 4;
+            break;
+        case CHAR:
+            size = 1;
             break;
         case PTR:
             size = 8;
@@ -116,14 +134,16 @@ int new_decl_var(Node *parent, Node *node) {
         default:
             return 0;
     }
+    node->type->size = size;
 
-    parent->offset = parent->offset + size;
-    node->offset = parent->offset;
+    if (parent->ty != ND_GNODE) {
+        calc_offset(parent, size);
+        node->offset = parent->offset;
+    } else {
+        node->offset = size;
+    }
+    
     map_put(parent->idents, node->name, node);
-
-    /*if (parent->parent) {
-        parent->parent->offset += parent->offset;
-    }*/
 
     if (!consume(';'))
         return 0;
@@ -136,6 +156,8 @@ Node *init_type() {
 
     if (consume(TK_INT)) {
         ty = INT;
+    } else if (consume(TK_CHAR)) {
+        ty = CHAR;
     } else {
         //未定義の型
         return NULL;
@@ -250,6 +272,11 @@ Node *parse_decl(Node *parent) {
     }
     
     if (new_decl_var(parent, node) == 1) {
+        if (parent->ty == ND_GNODE) {
+            node->ty = ND_GVAR;
+        } else {
+            node->ty = ND_LVAR;
+        }
         return node;
     }
 
@@ -282,12 +309,8 @@ Node *parse_lvar(Node *parent) {
         return NULL;
     }
 
-    if (node->type) {
-        Node *indire = malloc(sizeof(Node));
-        indire->ty = ND_DEREF;
-        indire->lhs = new_node('+', node, new_node_num(node->type->array_size));
-        return indire;
-    }
+    if (node->type)
+        return conv_arr_to_ptr(node);
     
     return node;
 }
@@ -429,6 +452,7 @@ void program() {
     global_node = malloc(sizeof(Node));
     global_node->idents = new_map();
     global_node->funcs = new_map();
+    global_node->ty = ND_GNODE;
     while (!consume(TK_EOF)) {
         code[i++] = parse_decl(global_node);
     }

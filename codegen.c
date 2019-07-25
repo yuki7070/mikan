@@ -5,6 +5,8 @@
 
 int jump_count = 0;
 
+Node *var_info(Node *parent, Node *node);
+
 void gen_lval(Node *node) {
     if (node->ty == ND_DEREF) {
         return gen_lval(node->lhs);
@@ -16,31 +18,32 @@ void gen_lval(Node *node) {
         return gen(node);
     }
 
-    int offset = var_offset(node->parent, node);
-    if (!offset) {
+    Node *info = var_info(node->parent, node);
+    if (!info) {
         printf("ERROR no var name %s\n", node->name);
         printf("%d\n", node->parent->ty);
         exit(1);
     }
 
-    printf("    mov rax, rbp\n");
-    printf("    sub rax, %d\n", offset);
-    printf("    push rax\n");
+    if (info->ty != ND_GVAR) {
+        int offset = var_offset(node->parent, node);
+        printf("    mov rax, rbp\n");
+        printf("    sub rax, %d\n", offset);
+        printf("    push rax\n");
+    } else {
+        printf("    lea rax, %s\n", info->name);
+        printf("    push rax\n");
+    }
 
-    /*
-    printf("VAR INFO\n");
-    printf("var address: %d\n", node);
-    printf("var name: %s\n", node->name);
-    printf("var parent: %d\n", node->parent);
-    printf("var offset: %d\n", offset);
-    */
     return;
 }
 
 int type_stuck_size(int ty) {
     switch (ty) {
     case INT:
-        return 8;
+        return 4;
+    case CHAR:
+        return 1;
     case PTR:
         return 8;
     }
@@ -51,6 +54,8 @@ int type_size(int ty) {
     switch (ty) {
     case INT:
         return 4;
+    case CHAR:
+        return 1;
     case PTR:
         return 8;
     }
@@ -67,7 +72,7 @@ int var_offset(Node *parent, Node *node) {
         var_info = map_get(parent->idents, node->name);
         return var_info->offset;
     } else if (parent->parent) {
-        return -1*var_offset(parent->parent, node);
+        return var_offset(parent->parent, node);
     }
 
     return 0;
@@ -123,10 +128,6 @@ void gen_if(Node *node) {
     int j1 = jump_count++;
     int j2 = jump_count++;
 
-    printf("    push rbp\n");
-    printf("    mov rbp, rsp\n");
-    printf("    sub rsp, %d\n", node->offset);
-
     gen(node->cond);
 
     Vector *then = node->then;
@@ -155,9 +156,7 @@ void gen_if(Node *node) {
         }
     }
     printf(".Lend%d:\n", j2);
-    printf("    mov rsp, rbp\n");
-    printf("    pop rbp\n");
-    printf("    push rbp\n");
+    printf("    push rax\n");
     
     return;
 }
@@ -233,9 +232,29 @@ void gen_decl_func(Node *node) {
 void gen_local_var(Node *node) {
     gen_lval(node);
 
+    
+    Node *info = var_info(node->parent, node);
+    int size = type_size(info->type->ty);
+    
     printf("    pop rax\n");
-    printf("    mov rax, [rax]\n");
+    
+    if (size == 8) {
+        printf("    mov rax, [rax]\n");
+    } else if (size == 4) {
+        printf("    mov eax, [rax]\n");
+    } else if (size == 1) {
+        printf("    mov al, [rax]\n");
+    }
+    //printf("    mov rax, [rax]\n");
     printf("    push rax\n");
+    return;
+}
+
+void gen_global_var(Node *node) {
+    printf(".bss\n");
+    printf("%s:\n", node->name);
+    printf("    .zero %d\n", node->offset);
+    printf(".text\n");
     return;
 }
 
@@ -255,10 +274,23 @@ void gen_assign(Node *node) {
     } else {
         gen(node->rhs);
     }
-
+    
+    printf("TESTTEST\n");
+    Node *lhs_node = var_info(node->lhs->parent, node->lhs);
+    printf("TESTTEST\n");
+    int size = type_size(lhs_node->type->ty);
+    
     printf("    pop rdi\n");
     printf("    pop rax\n");
-    printf("    mov [rax], rdi\n");
+    
+    if (size == 8) {
+        printf("    mov [rax], rdi\n");
+    } else if (size == 4) {
+        printf("    mov [rax], edi\n");
+    } else if (size == 1) {
+        printf("    mov [rax], dil\n");
+    }
+    //printf("    mov [rax], rdi\n");
     printf("    push rdi\n");
     return;
 }
@@ -271,7 +303,28 @@ void gen_indirection(Node *node) {
         if (info->type->ty == ARRAY)
             return;
     }
+    /*
+    Node *info = malloc(sizeof(Node));
+    if (!node->lhs->parent) {
+        info = var_info(node->lhs->lhs->parent, node->lhs->lhs);
+        if (!info) {
+            info = var_info(node->lhs->rhs->parent, node->lhs->rhs);
+        }
+    } else {
+        info = var_info(node->lhs->parent, node->lhs);
+    }
+    
+    int size = type_size(info->type->ty);
+    */
     printf("    pop rax\n");
+    /*
+    if (size == 8) {
+        printf("    mov rax, [rax]\n");
+    } else if (size == 4) {
+        printf("    mov eax, DWORD PTR [rax]\n");
+    } else if (size == 1) {
+        printf("    mov al, BYTE PTR [rax]\n");
+    }*/
     printf("    mov rax, [rax]\n");
     printf("    push rax\n");
     
@@ -285,15 +338,7 @@ void gen_address(Node *node) {
 
 void gen_sizeof(Node *node) {
     Node *info = var_info(node->parent, node->lhs);
-    int size;
-    switch (info->type->ty) {
-    case INT:
-        size = 4;
-        break;
-    case PTR:
-        size = 8;
-        break;
-    }
+    int size = type_size(info->type->ty);
     printf("    push %d\n", size);
     return;
 }
@@ -326,7 +371,6 @@ void gen_add(Node *node) {
 
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
-        printf("#return\n");
         return gen_return(node);
     }
 
@@ -344,6 +388,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_LVAR) {
         return gen_local_var(node);
+    }
+
+    if (node->ty == ND_GVAR) {
+        return gen_global_var(node);
     }
 
     if (node->ty == ND_DVAR) {

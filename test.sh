@@ -4,7 +4,7 @@ try() {
     input="$2"
 
     ./mikan "$input" > tmp.s
-    gcc -o tmp tmp.s
+    gcc -static -o tmp tmp.s
     ./tmp
     actual="$?"
 
@@ -25,7 +25,7 @@ try 10 "int main() { int a; a = 5; if (5 > 1) { a = 10;} return a; }"
 try 10 "int test() { int a; a = 7; int b; b = 3; return a + b; } int main() { return test(); }"
 try 20 "int main() { int a; a = 10; if (a > 5) { int b; b = 10; a = a + b; } return a; }"
 try 6 "int main() { int a; a = 1; if (a > 5) { int b; b = 10; a = a + b; } else { int b; b = 5; a = a + b; } return a; }"
-#try 10 "int test(int a, int b) { return a + b; } int main() { int a; a = 7; int b; b = 3; return test(a, b); }"
+try 10 "int test(int a, int b) { return a + b; } int main() { int a; a = 7; int b; b = 3; return test(a, b); }"
 try 10 "int main() { int x; x = 10; int *y; y = &x; return *y;}"
 try 4 "int main() { int x; x = sizeof(x); return x; }"
 try 8 "int main() { int *x; return sizeof(x); }"
@@ -34,6 +34,8 @@ try 2 "int main() { int a[2]; *a = 1; *(a+1) = 2; return *(a+1); }"
 try 2 "int main() { int a[2]; *a = 1; *(a+1) = 2; int *p; p = a; return *(p+1); }"
 try 3 "int main() { int a[2]; *a = 1; *(a+1) = 2; int *p; p = a; return *p+*(p+1); }"
 try 3 "int main() { int a[2]; *a = 1; a[1] = 2; int *p; p = a; return *p+p[1]; }"
+try 5 "int x; int main() { int y; x = 3; y = 2; return x+y; }"
+try 3 "int x; int test() { x = 3; return x; } int main() { int x; x = 5; return test(); }"
 try 55 "int a(int n) { int b; b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1; } if (n == 2) { b = 1;} if (n > 2) { b = a(n-1) + a(n-2); } return b; } int main() { return a(10); }"
 
 echo OK

@@ -70,10 +70,12 @@ typedef struct Node {
 typedef struct Type {
     enum {
         INT = 1,
+        CHAR,
         PTR,
         ARRAY,
     } ty;
     struct Type *ptr_to;
+    int size;
     size_t array_size;
 } Type;
 
@@ -103,6 +105,7 @@ enum {
     ND_DEREF,
     ND_ADDR,
     ND_SIZEOF,
+    ND_GNODE
 };
 
 Node *code[100];
@@ -135,6 +138,7 @@ enum {
     TK_GE,
     TK_TYPE,
     TK_INT,
+    TK_CHAR,
     TK_SIZEOF,
     TK_EOF,
 };
