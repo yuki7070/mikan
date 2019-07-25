@@ -299,7 +299,6 @@ void gen_assign(Node *node) {
     } else if (size == 4) {
         printf("    mov [rax], edi\n");
     } else if (size == 1) {
-        printf("are : %s\n", node->lhs->name);
         printf("    mov [rax], dil\n");
     }
     
