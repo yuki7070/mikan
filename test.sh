@@ -37,6 +37,8 @@ try 3 "int main() { int a[2]; *a = 1; a[1] = 2; int *p; p = a; return *p+p[1]; }
 try 5 "int x; int main() { int y; x = 3; y = 2; return x+y; }"
 try 3 "int x; int test() { x = 3; return x; } int main() { int x; x = 5; return test(); }"
 try 3 "int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }"
-#try 55 "int a(int n) { int b; b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1; } if (n == 2) { b = 1;} if (n > 2) { b = a(n-1) + a(n-2); } return b; } int main() { return a(10); }"
+try 55 "int a(int n) { int b; b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1; } if (n == 2) { b = 1;} if (n > 2) { b = a(n-1) + a(n-2); } return b; } int main() { return a(10); }"
+try 55 "test/test.c"
+try 45 "test/for1_test.c"
 
 echo OK
