@@ -242,6 +242,7 @@ void gen_while(Node *node) {
 }
 
 void gen_call_func(Node *node) {
+    printf("    mov al, 0\n");
     Vector *args = node->args;
     for (int j = 0; j < args->len; j++) {
         gen(args->data[j]);
