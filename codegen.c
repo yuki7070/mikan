@@ -460,6 +460,10 @@ void gen(Node *node) {
         return gen_string(node);
     }
 
+    if (node->ty == ND_FOR) {
+        return gen_for(node);
+    }
+
     if (node->ty == ND_WHILE) {
         int j1 = jump_count++;
         int j2 = jump_count++;
@@ -472,10 +476,6 @@ void gen(Node *node) {
         printf("    jmp .Lbegin%d\n", j1);
         printf(".Lend%d:\n", j2);
         return;
-    }
-
-    if (node->ty == ND_FOR) {
-        return gen_for(node);
     }
 
     if (node->ty == ND_BLOCK) {

@@ -543,44 +543,6 @@ Node *stmt(Node *parent) {
 
     if ((node = parse_for(parent)) != NULL)
         return node;
-    
-    if (consume(TK_FOR)) {
-        if (!consume('(')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "for文の'('がありません");
-        }
-
-        node = malloc(sizeof(Node));
-        node->ty = ND_FOR;
-
-        if (!consume(';')) {
-            node->init = expr(parent);
-            if (!consume(';')) {
-                Token *t = tokens->data[pos];
-                error_at(t->input, "for文の';'がありません");
-            }
-        }
-    
-        if (!consume(';')) {
-            node->cond = expr(parent);
-            if (!consume(';')) {
-                Token *t = tokens->data[pos];
-                error_at(t->input, "for文の';'がありません");
-            }
-        }
-
-        if (!consume(')')) {
-            node->inc = expr(parent);
-            if (!consume(')')) {
-                Token *t = tokens->data[pos];
-                error_at(t->input, "for文の')'がありません");
-            }
-        }
-
-        node->loop = stmt(parent);
-
-        return node;
-    }
 
     if (consume('{')) {
         node = malloc(sizeof(Node));
