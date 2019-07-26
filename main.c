@@ -1,6 +1,30 @@
 #include <string.h>
+#include <errno.h>
 #include <stdio.h>
 #include "mikan.h"
+
+char *read_file(char *path) {
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        error("can not open %s: %s", path, strerror(errno));
+
+    if (fseek(fp, 0, SEEK_END) == -1)
+        error("%s: fseek: %s", path, strerror(errno));
+
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1)
+        error("%s: fseek: $s", path, strerror(errno));
+
+    char *buf = calloc(1, size + 2);
+    fread(buf, size, 1, fp);
+
+    if (size == 0 || buf[size - 1] != '\n')
+        buf[size++] = '\n';
+
+    buf[size] = '\0';
+    fclose(fp);
+    return buf;
+}
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -8,11 +32,19 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    user_input = argv[1];
+    filepath = argv[1];
 
-    if (strcmp(user_input, "-test") == 0) {
+    if (strcmp(filepath, "-test") == 0) {
         runtest();
         return 0;
+    }
+
+    int len = strlen(filepath);
+    char *suffix = filepath+(len-2);
+    if (strcmp(suffix, ".c") == 0) {
+        user_input = read_file(filepath);
+    } else {
+        user_input = filepath;
     }
 
     count = 0;

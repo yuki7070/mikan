@@ -1,4 +1,5 @@
 char *user_input;
+char *filepath;
 
 typedef struct {
     void **data;
