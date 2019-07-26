@@ -646,15 +646,6 @@ Node *unary(Node *parent) {
         return node;
     }
 
-    if (consume(TK_SIZEOF)) {
-        Node *node = malloc(sizeof(Node));
-        node->ty = ND_SIZEOF;
-        Type *t = malloc(sizeof(Type));
-        t->ty = INT;
-        node->type = t;
-        node->lhs = unary(parent);
-        return node;
-    }
     if (consume('+'))
         return term(parent);
     if (consume('-'))
