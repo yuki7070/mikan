@@ -7,6 +7,14 @@ int jump_count = 0;
 
 Node *var_info(Node *parent, Node *node);
 
+void gen_str_literals(Vector *vec) {
+    for (int j = 0; j < vec->len; j++) {
+        Node *node = vec->data[j];
+        printf(".LC%d:\n", node->offset);
+        printf("    .string \"%s\"\n", node->name);
+    }
+}
+
 void gen_lval(Node *node) {
     if (node->ty == ND_DEREF) {
         return gen_lval(node->lhs);
@@ -360,6 +368,12 @@ void gen_add(Node *node) {
     return;
 }
 
+void gen_string(Node *node) {
+    printf("    lea rax, .LC%d\n", node->offset);
+    printf("    push rax\n");
+    return;
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         return gen_return(node);
@@ -407,6 +421,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_SIZEOF) {
         return gen_sizeof(node);
+    }
+
+    if (node->ty == ND_STR) {
+        return gen_string(node);
     }
 
     if (node->ty == ND_WHILE) {

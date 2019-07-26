@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "mikan.h"
 
@@ -67,6 +68,19 @@ Vector *tokenize() {
             add_token(tokens, TK_GE, p);
             i++;
             p += 2;
+            continue;
+        }
+
+        if (*p == '"') {
+            int j = 1;
+            while (p[j] != '"') {
+                j++;
+            }
+            Token *t = add_token(tokens, TK_STR, p);
+            char *name = strndup(p+1, j-1);
+            t->name = name;
+            i++;
+            p += j+1;
             continue;
         }
 

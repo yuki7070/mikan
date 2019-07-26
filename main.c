@@ -19,14 +19,15 @@ int main(int argc, char **argv) {
 
     identities = new_map();
     functions = new_map();
+    char_literals = new_vector();
 
     tokens = tokenize();
-
     program();
 
     //printf("==========codegen=========\n");
 
     printf(".intel_syntax noprefix\n");
+    gen_str_literals(char_literals);
     printf(".global main\n");
     //printf("main: \n");
 

@@ -22,6 +22,7 @@ typedef struct {
 
 Map *identities;
 Map *functions;
+Vector *char_literals;
 Map *new_map();
 void map_put(Map *map, char *key, void *val);
 void *map_get(Map *map, char *key);
@@ -105,13 +106,15 @@ enum {
     ND_DEREF,
     ND_ADDR,
     ND_SIZEOF,
-    ND_GNODE
+    ND_GNODE,
+    ND_STR
 };
 
 Node *code[100];
 
 void program();
 void gen(Node *node);
+void gen_str_literals(Vector *char_literals);;
 
 int count;
 Map *func_var_count;
@@ -139,6 +142,7 @@ enum {
     TK_TYPE,
     TK_INT,
     TK_CHAR,
+    TK_STR,
     TK_SIZEOF,
     TK_EOF,
 };

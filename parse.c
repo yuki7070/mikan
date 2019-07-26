@@ -4,6 +4,7 @@
 #include "mikan.h"
 
 int pos = 0;
+int str = 0;
 
 Node *function();
 Node *stmt(Node *parent);
@@ -335,11 +336,13 @@ Node *parse_func(Node *parent) {
         consume(',');
     }
 
+    /*
     if (map_exists(parent->funcs, node->name) == 0 && map_exists(global_node->funcs, node->name) == 0) {
         //error
         printf("ERROR NOT EXIST FUNCTION\n");
         return NULL;
     }
+    */
 
     return node;
 }
@@ -444,6 +447,19 @@ Node *parse_sizeof(Node *parent) {
     node->type = t;
 
     node->lhs = unary(parent);
+    return node;
+}
+
+Node *parse_char_literal(Node *parent) {
+    if (!consume(TK_STR))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_STR;
+    Token *t = tokens->data[pos-1];
+    node->name = t->name;
+    node->offset = str++;
+    vec_push(char_literals, node);
     return node;
 }
 
@@ -680,6 +696,10 @@ Node *term(Node *parent) {
     }
 
     if ((node = parse_address(parent)) != NULL) {
+        return node;
+    }
+
+    if ((node = parse_char_literal(parent)) != NULL) {
         return node;
     }
     
