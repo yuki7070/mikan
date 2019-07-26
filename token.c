@@ -39,6 +39,21 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "//", 2) == 0) {
+            p += 2;
+            while (*p != '\n')
+                p++;
+            continue;
+        }
+
+        if (strncmp(p, "/*", 2) == 0) {
+            char *q = strstr(p + 2, "*/");
+            if (!q)
+                error_at(p, "コメントが閉じられていません");
+            p = q + 2;
+            continue;
+        }
+
         if (*p == '=' && *(p+1) == '=') {
             //演算子==の実装
             add_token(tokens, TK_EQ, p);
