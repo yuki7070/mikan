@@ -42,5 +42,6 @@ try 55 "test/test.c"
 try 45 "test/for1_test.c"
 try 45 "test/while1_test.c"
 try 55 "test/fibonacci_test.c"
+try 45 "test/array_test.c"
 
 echo OK
