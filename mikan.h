@@ -45,7 +45,7 @@ typedef struct Node {
     struct Vector *then;
     struct Vector *els;
 
-    struct Node *loop;
+    struct Vector *loop;
 
     struct Node *init;
     struct Node *inc;

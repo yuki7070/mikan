@@ -329,14 +329,6 @@ Node *parse_func(Node *parent) {
         consume(',');
     }
 
-    /*
-    if (map_exists(parent->funcs, node->name) == 0 && map_exists(global_node->funcs, node->name) == 0) {
-        //error
-        printf("ERROR NOT EXIST FUNCTION\n");
-        return NULL;
-    }
-    */
-
     return node;
 }
 
@@ -397,6 +389,51 @@ Node *parse_if(Node *parent) {
         vec_push(node->els, stmt(node));
     }
     
+    return node;
+}
+
+Node *parse_for(Node *parent) {
+    if (!consume(TK_FOR))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_FOR;
+    node->loop = new_vector();
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->parent = parent;
+    node->offset = 0;
+    
+    if (!consume('(')) {
+        printf("ERROR for文の(");
+        exit(1);
+    }
+
+    if (!consume(';')) {
+        node->init = stmt(node);
+    }
+
+    if (!consume(';')) {
+        node->cond = stmt(node);
+    }
+
+    if (!consume(')')) {
+        node->inc = expr(node);
+        if (!consume(')')) {
+            printf("ERROR");
+            exit(1);
+        }
+    }
+
+    if (!consume('{')) {
+        printf("ERROR for文の{");
+        exit(1);
+    }
+
+    while (!consume('}')) {
+        vec_push(node->loop, stmt(node));
+    }
+
     return node;
 }
 
@@ -504,6 +541,9 @@ Node *stmt(Node *parent) {
         return node;
     }
 
+    if ((node = parse_for(parent)) != NULL)
+        return node;
+    
     if (consume(TK_FOR)) {
         if (!consume('(')) {
             Token *t = tokens->data[pos];
