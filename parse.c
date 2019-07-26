@@ -78,13 +78,6 @@ int new_decl_func(Node *parent, Node *node) {
         consume(',');
     }
 
-    Vector *args = node->args;
-    for (int j = 0; j < args->len; j++) {
-        Node *arg = args->data[j];
-        map_put(node->idents, arg->name, arg);
-        node->offset = arg->offset;
-    }
-
     if (!consume('{')) {
         printf("error\n");
         return 1;
@@ -101,7 +94,7 @@ int new_decl_func(Node *parent, Node *node) {
 
 void calc_offset(Node *parent, int size) {
     if (parent->parent) {
-        parent->offset = parent->parent->offset + size;
+        parent->offset += parent->parent->offset + size;
         return calc_offset(parent->parent, size);
     }
     parent->offset += size;
