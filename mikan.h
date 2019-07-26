@@ -1,5 +1,6 @@
 char *user_input;
 char *filepath;
+int is_file;
 
 typedef struct {
     void **data;

@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
     int len = strlen(filepath);
     char *suffix = filepath+(len-2);
     if (strcmp(suffix, ".c") == 0) {
+        is_file = 1;
         user_input = read_file(filepath);
     } else {
         user_input = filepath;
