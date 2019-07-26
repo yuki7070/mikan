@@ -40,5 +40,6 @@ try 3 "int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + 
 try 55 "int a(int n) { int b; b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1; } if (n == 2) { b = 1;} if (n > 2) { b = a(n-1) + a(n-2); } return b; } int main() { return a(10); }"
 try 55 "test/test.c"
 try 45 "test/for1_test.c"
+try 45 "test/while1_test.c"
 
 echo OK

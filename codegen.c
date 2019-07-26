@@ -215,7 +215,30 @@ void gen_for(Node *node) {
     printf("    jmp .Lbegin%d\n", j1);
     printf(".Lend%d:\n", j2);
     return;
-    
+}
+
+void gen_while(Node *node) {
+    int j1 = jump_count++;
+    int j2 = jump_count++;
+
+    Vector *loop = node->loop;
+
+    printf(".Lbegin%d:\n", j1);
+    if (node->cond) {
+        gen(node->cond);
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        printf("    je .Lend%d\n", j2);
+    }
+
+    for (int j = 0; j < loop->len; j++) {
+        gen(loop->data[j]);
+        printf("    pop rax\n");
+    }
+
+    printf("    jmp .Lbegin%d\n", j1);
+    printf(".Lend%d:\n", j2);
+    return;
 }
 
 void gen_call_func(Node *node) {
@@ -465,17 +488,7 @@ void gen(Node *node) {
     }
 
     if (node->ty == ND_WHILE) {
-        int j1 = jump_count++;
-        int j2 = jump_count++;
-        printf(".Lbegin%d:\n", j1);
-        gen(node->cond);
-        printf("    pop rax\n");
-        printf("    cmp rax, 0\n");
-        printf("    je  .Lend%d\n", j2);
-        gen(node->loop);
-        printf("    jmp .Lbegin%d\n", j1);
-        printf(".Lend%d:\n", j2);
-        return;
+        return gen_while(node);
     }
 
     if (node->ty == ND_BLOCK) {

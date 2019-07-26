@@ -437,6 +437,43 @@ Node *parse_for(Node *parent) {
     return node;
 }
 
+Node *parse_while(Node *parent) {
+    if (!consume(TK_WHILE))
+        return NULL;
+
+    if (!consume('(')) {
+        printf("ERROR while文の(");
+        exit(1);
+    }
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_WHILE;
+    node->loop = new_vector();
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->parent = parent;
+    node->offset = 0;
+
+    if (!consume(')')) {
+        node->cond = expr(node);
+        if (!consume(')')) {
+            printf("ERROR");
+            exit(1);
+        }
+    }
+
+    if (!consume('{')) {
+        printf("ERROR while文の{");
+        exit(1);
+    }
+
+    while (!consume('}')) {
+        vec_push(node->loop, stmt(node));
+    }
+    
+    return node;
+}
+
 Node *parse_indirection(Node *parent) {
     if (!consume('*'))
         return NULL;
@@ -521,25 +558,8 @@ Node *stmt(Node *parent) {
     if ((node = parse_if(parent)) != NULL)
         return node;
     
-    if (consume(TK_WHILE)) {
-        if (!consume('(')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "while文の'('がありません");
-        }
-
-        node = malloc(sizeof(Node));
-        node->ty = ND_WHILE;
-        node->cond = expr(parent);
-
-        if (!consume(')')) {
-            Token *t = tokens->data[pos];
-            error_at(t->input, "while文の')'がありません");
-        }
-
-        node->loop = stmt(parent);
-
+    if ((node = parse_while(parent)) != NULL)
         return node;
-    }
 
     if ((node = parse_for(parent)) != NULL)
         return node;
