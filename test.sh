@@ -41,5 +41,6 @@ try 55 "int a(int n) { int b; b = 0; if (n == 0) { b = 0; } if (n == 1) { b = 1;
 try 55 "test/test.c"
 try 45 "test/for1_test.c"
 try 45 "test/while1_test.c"
+try 55 "test/fibonacci_test.c"
 
 echo OK
