@@ -24,34 +24,14 @@ int main(int argc, char **argv) {
     tokens = tokenize();
     program();
 
-    //printf("==========codegen=========\n");
-
     printf(".intel_syntax noprefix\n");
     gen_str_literals(char_literals);
     printf(".global main\n");
-    //printf("main: \n");
-
-    /*
-    printf("    push rbp\n");
-    printf("    mov rbp, rsp\n");
-    printf("    sub rsp, %d\n", count);
-    */
 
     for (int i = 0; code[i]; i++) {
-        //printf("TEST\n");
         Node *n = code[i];
-        //printf("TEST2\n");
-        //printf("TEST%d\n", n->ty);
         gen(code[i]);
-
-        //printf("    pop rax\n");
     }
-
-    /*
-    printf("    mov rsp, rbp\n");
-    printf("    pop rbp\n");
-    printf("    ret\n");
-    */
 
     return 0;
 }
