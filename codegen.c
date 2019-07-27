@@ -214,6 +214,7 @@ void gen_for(Node *node) {
 
     printf("    jmp .Lbegin%d\n", j1);
     printf(".Lend%d:\n", j2);
+    printf("    push rax\n");
     return;
 }
 
@@ -238,6 +239,7 @@ void gen_while(Node *node) {
 
     printf("    jmp .Lbegin%d\n", j1);
     printf(".Lend%d:\n", j2);
+    printf("    push rax\n");
     return;
 }
 
