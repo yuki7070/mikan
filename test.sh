@@ -44,5 +44,7 @@ try 18 "test/for2_test.c"
 try 45 "test/while1_test.c"
 try 55 "test/fibonacci_test.c"
 try 45 "test/array_test.c"
+try 1 "int main() { if (10 > 6 && 7 > 1) { return 1; } return 0;}"
+try 1 "int main() { if (10 > 6 || 5 > 10) { return 1; } return 0; }"
 
 echo OK

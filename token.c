@@ -54,7 +54,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (*p == '=' && *(p+1) == '=') {
+        if (strncmp(p, "==", 2) == 0) {
             //演算子==の実装
             add_token(tokens, TK_EQ, p);
             i++;
@@ -62,7 +62,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (*p == '!' && *(p+1) == '=') {
+        if (strncmp(p, "!=", 2) == 0) {
             //演算子!=の実装
             add_token(tokens, TK_NE, p);
             i++;
@@ -70,7 +70,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (*p == '<' && *(p+1) == '=') {
+        if (strncmp(p, "<=", 2) == 0) {
             //演算子<=の実装
             add_token(tokens, TK_LE, p);
             i++;
@@ -78,9 +78,23 @@ Vector *tokenize() {
             continue;
         }
 
-        if (*p == '>' && *(p+1) == '=') {
+        if (strncmp(p, ">=", 2) == 0) {
             //演算子>=の実装
             add_token(tokens, TK_GE, p);
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (strncmp(p, "&&", 2) == 0) {
+            add_token(tokens, TK_AND, p);
+            i++;
+            p += 2;
+            continue;
+        }
+
+        if (strncmp(p, "||", 2) == 0) {
+            add_token(tokens, TK_OR, p);
             i++;
             p += 2;
             continue;

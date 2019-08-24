@@ -11,6 +11,7 @@ Node *stmt(Node *parent);
 Node *expr(Node *parent);
 Node *assign(Node *parent);
 Node *equality(Node *parent);
+Node *logic(Node *parent);
 Node *relational(Node *parent);
 Node *add(Node *parent);
 Node *mul(Node *parent);
@@ -591,13 +592,26 @@ Node *expr(Node *parent) {
 }
 
 Node *assign(Node *parent) {
-    Node *node = equality(parent);
+    Node *node = logic(parent);
 
     if (consume('=')) {
         node = new_node('=', node, assign(parent));
     }
         
     return node;
+}
+
+Node *logic(Node *parent) {
+    Node *node = equality(parent);
+
+    for (;;) {
+        if (consume(TK_AND))
+            node = new_node(ND_AND, node, equality(parent));
+        else if (consume(TK_OR))
+            node = new_node(ND_OR, node, equality(parent));
+        else
+            return node;
+    }
 }
 
 Node *equality(Node *parent) {
