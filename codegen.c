@@ -48,11 +48,11 @@ void gen_lval(Node *node) {
 
 int type_size(int ty) {
     switch (ty) {
-    case INT:
+    case TY_INT:
         return 4;
-    case CHAR:
+    case TY_CHAR:
         return 1;
-    case PTR:
+    case TY_PTR:
         return 8;
     }
     return 0;
@@ -109,7 +109,7 @@ int node_type(Node *node) {
     }
 
     if (node->ty == ND_ADDR) {
-        return type_size(PTR);
+        return type_size(TY_PTR);
     }
 
     if (node->ty == ND_LVAR) {
@@ -122,7 +122,7 @@ void calc_ptr_stuck(int left_ty, int right_ty,  Node *node) {
     if (left_ty) {
         gen_lval(node);
         Node *info = var_info(node->parent, node);
-        if (info->type->ty == PTR) {
+        if (info->type->ty == TY_PTR) {
             printf("    pop rax\n");
             printf("    mov rax, [rax]\n");
             printf("    push rax\n");
@@ -347,7 +347,7 @@ void gen_assign(Node *node) {
     gen_lval(node->lhs);
     if (node->rhs->ty == ND_LVAR) {
         Node *info = var_info(node->rhs->parent, node->rhs);
-        if (info->type->ty == ARRAY) {
+        if (info->type->ty == TY_ARRAY) {
             gen_lval(node->rhs);
         } else {
             gen(node->rhs);
@@ -378,7 +378,7 @@ void gen_indirection(Node *node) {
 
     if (node->lhs->ty == ND_LVAR) {
         Node *info = var_info(node->lhs->parent, node->lhs);
-        if (info->type->ty == ARRAY)
+        if (info->type->ty == TY_ARRAY)
             return;
     }
 

@@ -106,21 +106,21 @@ int new_decl_var(Node *parent, Node *node) {
     int size = 0;
     int s = 0;
     switch (node->type->ty) {
-        case INT:
+        case TY_INT:
             size = 4;
             break;
-        case CHAR:
+        case TY_CHAR:
             size = 1;
             break;
-        case PTR:
+        case TY_PTR:
             size = 8;
             break;
-        case ARRAY:
+        case TY_ARRAY:
             switch (node->type->ptr_to->ty) {
-            case INT:
+            case TY_INT:
                 s = 8;
                 break;
-            case PTR:
+            case TY_PTR:
                 s = 8;
                 break;
             }
@@ -150,9 +150,11 @@ Node *init_type() {
     int ty;
 
     if (consume(TK_INT)) {
-        ty = INT;
+        ty = TY_INT;
     } else if (consume(TK_CHAR)) {
-        ty = CHAR;
+        ty = TY_CHAR;
+    } else if (consume(TK_VOID)) {
+        ty = TY_VOID;
     } else {
         //未定義の型
         return NULL;
@@ -162,7 +164,7 @@ Node *init_type() {
 
     if (consume('*')) {
         Type *t = malloc(sizeof(Type));
-        t->ty = PTR;
+        t->ty = TY_PTR;
         node->type = t;
     }
 
@@ -208,7 +210,7 @@ Node *init_ident(Node *parent, Node *node) {
     //配列である場合
     Type *ty_1 = node->type;
     Type *ty_2 = malloc(sizeof(Type));
-    ty_2->ty = ARRAY;
+    ty_2->ty = TY_ARRAY;
     ty_2->ptr_to = ty_1;
     node->type = ty_2;
     if (!consume(TK_NUM)) {
@@ -237,13 +239,13 @@ Node *init_func_arg(Node *parent) {
     node->ty = ND_DVAR;
     int size = 0;
     switch (node->type->ty) {
-        case INT:
+        case TY_INT:
             size = 8;
             break;
-        case PTR:
+        case TY_PTR:
             size = 8;
             break;
-        case ARRAY:
+        case TY_ARRAY:
             size = node->type->array_size;
             break;
         default:
@@ -511,7 +513,7 @@ Node *parse_sizeof(Node *parent) {
     node->ty = ND_SIZEOF;
     node->parent = parent;
     Type *t = malloc(sizeof(Type));
-    t->ty = INT;
+    t->ty = TY_INT;
     node->type = t;
 
     node->lhs = unary(parent);

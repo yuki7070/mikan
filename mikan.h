@@ -72,10 +72,11 @@ typedef struct Node {
 
 typedef struct Type {
     enum {
-        INT = 1,
-        CHAR,
-        PTR,
-        ARRAY,
+        TY_INT = 1,
+        TY_CHAR,
+        TY_PTR,
+        TY_ARRAY,
+        TY_VOID,
     } ty;
     struct Type *ptr_to;
     int size;
@@ -149,6 +150,7 @@ enum {
     TK_INT,
     TK_CHAR,
     TK_STR,
+    TK_VOID,
     TK_SIZEOF,
     TK_EOF,
 };
