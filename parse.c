@@ -22,6 +22,43 @@ Node *init_func_arg(Node *parent);
 
 int new_func(Node *parent, Node *node);
 
+int get_size(Node *node) {
+    int s = 0;
+    switch (node->type->ty) {
+        case TY_INT:
+            return 4;
+            break;
+        case TY_CHAR:
+            return 1;
+            break;
+        case TY_PTR:
+            return 8;
+            break;
+        case TY_VOID:
+            return 0;
+            break;
+        case TY_ARRAY:
+            switch (node->type->ptr_to->ty) {
+            case TY_CHAR:
+                s = 1;
+                break;
+            case TY_INT:
+                s = 4;
+                break;
+            case TY_PTR:
+                s = 8;
+                break;
+            case TY_VOID:
+                s = 0;
+                break;
+            }
+            return node->type->array_size * s;
+            break;
+        default:
+            return -1;
+    }
+}
+
 int consume(int ty) {
     Token *t = tokens->data[pos];
 
@@ -103,41 +140,7 @@ void calc_offset(Node *parent, int size) {
 }
 
 int new_decl_var(Node *parent, Node *node) {
-    int size = 0;
-    int s = 0;
-    switch (node->type->ty) {
-        case TY_INT:
-            size = 4;
-            break;
-        case TY_CHAR:
-            size = 1;
-            break;
-        case TY_PTR:
-            size = 8;
-            break;
-        case TY_VOID:
-            size = 0;
-            break;
-        case TY_ARRAY:
-            switch (node->type->ptr_to->ty) {
-            case TY_CHAR:
-                size = 1;
-                break;
-            case TY_INT:
-                s = 4;
-                break;
-            case TY_PTR:
-                s = 8;
-                break;
-            case TY_VOID:
-                size = 0;
-                break;
-            }
-            size = node->type->array_size * s;
-            break;
-        default:
-            return 0;
-    }
+    int size = get_size(node);
     node->type->size = size;
 
     if (parent->ty != ND_GNODE) {

@@ -72,7 +72,7 @@ typedef struct Node {
 
 typedef struct Type {
     enum {
-        TY_INT = 1,
+        TY_INT = 256,
         TY_CHAR,
         TY_PTR,
         TY_ARRAY,
@@ -82,11 +82,6 @@ typedef struct Type {
     int size;
     size_t array_size;
 } Type;
-
-
-enum {
-    TY_INT = 256,
-};
 
 enum {
     ND_NUM = 256,
