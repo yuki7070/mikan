@@ -115,13 +115,22 @@ int new_decl_var(Node *parent, Node *node) {
         case TY_PTR:
             size = 8;
             break;
+        case TY_VOID:
+            size = 0;
+            break;
         case TY_ARRAY:
             switch (node->type->ptr_to->ty) {
+            case TY_CHAR:
+                size = 1;
+                break;
             case TY_INT:
-                s = 8;
+                s = 4;
                 break;
             case TY_PTR:
                 s = 8;
+                break;
+            case TY_VOID:
+                size = 0;
                 break;
             }
             size = node->type->array_size * s;
@@ -244,6 +253,12 @@ Node *init_func_arg(Node *parent) {
             break;
         case TY_PTR:
             size = 8;
+            break;
+        case TY_VOID:
+            size = 0;
+            break;
+        case TY_CHAR:
+            size = 1;
             break;
         case TY_ARRAY:
             size = node->type->array_size;

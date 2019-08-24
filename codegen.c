@@ -54,6 +54,8 @@ int type_size(int ty) {
         return 1;
     case TY_PTR:
         return 8;
+    case TY_VOID:
+        return 0;
     }
     return 0;
 }
