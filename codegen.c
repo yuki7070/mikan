@@ -5,6 +5,8 @@
 
 int jump_seq = 0;
 int loop_seq = 0;
+int break_pnt = 0;
+int continue_pnt = 0;
 
 Node *var_info(Node *parent, Node *node);
 
@@ -171,7 +173,7 @@ void gen_if(Node *node) {
             printf("    pop rax\n");
         }
         printf("    jmp  .LLend%d\n", seq);
-        printf(".Lelse%d:\n", seq);
+        printf(".LLelse%d:\n", seq);
         for (int j = 0; j < els->len; j++) {
             gen(els->data[j]);
             printf("    pop rax\n");
@@ -191,6 +193,10 @@ void gen_if(Node *node) {
 
 void gen_for(Node *node) {
     int seq = loop_seq++;
+    int tmp_break = break_pnt;
+    int tmp_cotinue = continue_pnt;
+    break_pnt = seq;
+    continue_pnt = seq;
 
     Vector *loop = node->loop;
 
@@ -210,7 +216,7 @@ void gen_for(Node *node) {
         printf("    pop rax\n");
     }
 
-    printf(".Lcontinue%d:", seq);
+    printf(".Lcontinue%d:", continue_pnt);
     if (node->inc) {
         gen(node->inc);
         printf("    pop rax\n");
@@ -218,12 +224,19 @@ void gen_for(Node *node) {
 
     printf("    jmp .Lbegin%d\n", seq);
     printf(".Lend%d:\n", seq);
+    printf(".Lbreak%d:\n", seq);
     printf("    push rax\n");
+    break_pnt = tmp_break;
+    continue_pnt = tmp_cotinue;
     return;
 }
 
 void gen_while(Node *node) {
     int seq = loop_seq++;
+    int tmp_break = break_pnt;
+    int tmp_cotinue = continue_pnt;
+    break_pnt = seq;
+    continue_pnt = seq;
 
     Vector *loop = node->loop;
 
@@ -243,7 +256,10 @@ void gen_while(Node *node) {
 
     printf("    jmp .Lbegin%d\n", seq);
     printf(".Lend%d:\n", seq);
+    printf(".Lbreak%d:\n", seq);
     printf("    push rax\n");
+    break_pnt = tmp_break;
+    continue_pnt = tmp_cotinue;
     return;
 }
 
@@ -475,12 +491,12 @@ void gen_logic_or(Node *node) {
 }
 
 void gen_break(Node *node) {
-    printf("    jmp .Lend%d\n", loop_seq-1);
+    printf("    jmp .Lend%d\n", break_pnt);
     return;
 }
 
 void gen_continue(Node *node) {
-    printf("    jmp .Lcontinue%d\n", loop_seq-1);
+    printf("    jmp .Lcontinue%d\n", continue_pnt);
     return;
 }
 
