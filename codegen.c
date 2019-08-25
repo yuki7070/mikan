@@ -165,25 +165,25 @@ void gen_if(Node *node) {
     printf("    cmp rax, 0\n");
     
     if (node->els) {
-        printf("    je  .Lelse%d\n", seq);
+        printf("    je  .LLelse%d\n", seq);
         for (int j = 0; j < then->len; j++) {
             gen(then->data[j]);
             printf("    pop rax\n");
         }
-        printf("    jmp  .Lend%d\n", seq);
+        printf("    jmp  .LLend%d\n", seq);
         printf(".Lelse%d:\n", seq);
         for (int j = 0; j < els->len; j++) {
             gen(els->data[j]);
             printf("    pop rax\n");
         }
     } else {
-        printf("    je  .Lend%d\n", seq);
+        printf("    je  .LLend%d\n", seq);
         for (int j = 0; j < then->len; j++) {
             gen(then->data[j]);
             printf("    pop rax\n");
         }
     }
-    printf(".Lend%d:\n", seq);
+    printf(".LLend%d:\n", seq);
     printf("    push rax\n");
     
     return;
@@ -441,16 +441,16 @@ void gen_logic_and(Node *node) {
     gen(node->lhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    je .Lfalse%d\n", seq);
+    printf("    je .LLfalse%d\n", seq);
     gen(node->rhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    je .Lfalse%d\n", seq);
+    printf("    je .LLfalse%d\n", seq);
     printf("    push 1\n");
-    printf("    jmp .Lend%d\n", seq);
-    printf(".Lfalse%d:\n", seq);
+    printf("    jmp .LLend%d\n", seq);
+    printf(".LLfalse%d:\n", seq);
     printf("    push 0\n");
-    printf(".Lend%d:\n", seq);
+    printf(".LLend%d:\n", seq);
     return;
 }
 
@@ -459,16 +459,21 @@ void gen_logic_or(Node *node) {
     gen(node->lhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    jne .Ltrue%d\n", seq);
+    printf("    jne .LLtrue%d\n", seq);
     gen(node->rhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    jne .Ltrue%d\n", seq);
+    printf("    jne .LLtrue%d\n", seq);
     printf("    push 0\n");
-    printf("    jmp .Lend%d\n", seq);
-    printf(".Ltrue%d:\n", seq);
+    printf("    jmp .LLend%d\n", seq);
+    printf(".LLtrue%d:\n", seq);
     printf("    push 1\n");
-    printf(".Lend%d:\n", seq);
+    printf(".LLend%d:\n", seq);
+    return;
+}
+
+void gen_break(Node *node) {
+    printf("    jmp .Lend%d\n", loop_seq-1);
     return;
 }
 
@@ -539,6 +544,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_OR) {
         return gen_logic_or(node);
+    }
+
+    if (node->ty == ND_BREAK) {
+        return gen_break(node);
     }
 
     if (node->ty == ND_BLOCK) {

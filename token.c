@@ -193,6 +193,13 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "break", 5) == 0 && !is_alnum(p[5])) {
+            add_token(tokens, TK_BREAK, p);
+            i++;
+            p += 5;
+            continue;
+        }
+
         if (isalpha(*p) || *p == '_') {
             int j = 1;
             while (is_alnum(p[j]))

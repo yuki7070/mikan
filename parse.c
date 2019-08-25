@@ -551,6 +551,20 @@ Node *parse_char_literal(Node *parent) {
     return node;
 }
 
+Node *parse_break(Node *parent) {
+    if (!consume(TK_BREAK))
+        return NULL;
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_BREAK;
+    node->parent = parent;
+    if (!consume(';')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "';'ではないトークンです");
+    }
+    return node;
+}
+
 void program() {
     int i = 0;
     global_node = malloc(sizeof(Node));
@@ -583,6 +597,9 @@ Node *stmt(Node *parent) {
         return node;
 
     if ((node = parse_for(parent)) != NULL)
+        return node;
+
+    if ((node = parse_break(parent)) != NULL)
         return node;
 
     if (consume('{')) {

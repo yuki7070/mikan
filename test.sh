@@ -47,5 +47,6 @@ try 45 "test/array_test.c"
 try 1 "int main() { if (10 > 6 && 7 > 1) { return 1; } return 0;}"
 try 1 "int main() { if (10 > 6 || 5 > 10) { return 1; } return 0; }"
 try 10 "test/test.c"
+try 15 "test/break.c"
 
 echo OK
