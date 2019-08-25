@@ -17,7 +17,7 @@ void gen_str_literals(Vector *vec) {
 
 void gen_lval(Node *node) {
     if (node->ty == ND_DEREF) {
-        return gen_lval(node->lhs);
+        return gen(node->lhs);;
     }
     if (node->ty == ND_ADDR) {
 
@@ -142,8 +142,10 @@ void calc_ptr_stuck(int left_ty, int right_ty,  Node *node) {
 }
 
 void gen_return(Node *node) {
-    gen(node->lhs);
-    printf("    pop rax\n");
+    if (node->lhs) {
+        gen(node->lhs);
+        printf("    pop rax\n");
+    }
     printf("    mov rsp, rbp\n");
     printf("    pop rbp\n");
     printf("    ret\n");
@@ -378,11 +380,12 @@ void gen_assign(Node *node) {
 void gen_indirection(Node *node) {
     gen(node->lhs);
 
+    /*
     if (node->lhs->ty == ND_LVAR) {
         Node *info = var_info(node->lhs->parent, node->lhs);
         if (info->type->ty == TY_ARRAY)
             return;
-    }
+    }*/
 
     printf("    pop rax\n");
     printf("    mov rax, [rax]\n");

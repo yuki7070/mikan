@@ -624,14 +624,12 @@ Node *assign(Node *parent) {
 Node *logic(Node *parent) {
     Node *node = equality(parent);
 
-    for (;;) {
-        if (consume(TK_AND))
-            node = new_node(ND_AND, node, equality(parent));
-        else if (consume(TK_OR))
-            node = new_node(ND_OR, node, equality(parent));
-        else
-            return node;
-    }
+    if (consume(TK_AND))
+        node = new_node(ND_AND, node, logic(parent));
+    else if (consume(TK_OR))
+        node = new_node(ND_OR, node, logic(parent));
+    else
+        return node;
 }
 
 Node *equality(Node *parent) {
@@ -742,8 +740,6 @@ Node *term(Node *parent) {
     if ((node = parse_char_literal(parent)) != NULL) {
         return node;
     }
-    
-    printf("%d\n", t->ty);
-    error_at(t->input, "数値でも開き括弧でもないトークンです");
-    exit(1);
+
+    return;
 }

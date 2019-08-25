@@ -1,21 +1,12 @@
-int a(int n) {
-  int b;
-  b = 0;
-  if (n == 0) {
-    b = 0;
-  }
-  if (n == 1) {
-    b = 1;
-  }
-  if (n == 2) {
-    b = 1;
-  }
-  if (n > 2) {
-    b = a(n-1) + a(n-2);
-  }
-  return b;
+void test(int *a) {
+    *a = 10;
+    return;
 }
 
 int main() {
-  return a(10);
+    int *b;
+    int a;
+    b = &a;
+    test(b);
+    return a;
 }
