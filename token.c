@@ -200,6 +200,13 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "continue", 8) == 0 && !is_alnum(p[8])) {
+            add_token(tokens, TK_CONTINUE, p);
+            i++;
+            p += 8;
+            continue;
+        }
+
         if (isalpha(*p) || *p == '_') {
             int j = 1;
             while (is_alnum(p[j]))

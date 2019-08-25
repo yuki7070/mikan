@@ -108,7 +108,8 @@ enum {
     ND_SIZEOF,
     ND_GNODE,
     ND_STR,
-    ND_BREAK
+    ND_BREAK,
+    ND_CONTINUE
 };
 
 Node *code[100];
@@ -149,6 +150,7 @@ enum {
     TK_VOID,
     TK_SIZEOF,
     TK_BREAK,
+    TK_CONTINUE,
     TK_EOF,
 };
 

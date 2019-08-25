@@ -210,6 +210,7 @@ void gen_for(Node *node) {
         printf("    pop rax\n");
     }
 
+    printf(".Lcontinue%d:", seq);
     if (node->inc) {
         gen(node->inc);
         printf("    pop rax\n");
@@ -227,6 +228,7 @@ void gen_while(Node *node) {
     Vector *loop = node->loop;
 
     printf(".Lbegin%d:\n", seq);
+    printf(".Lcontinue%d:\n", seq);
     if (node->cond) {
         gen(node->cond);
         printf("    pop rax\n");
@@ -477,6 +479,11 @@ void gen_break(Node *node) {
     return;
 }
 
+void gen_continue(Node *node) {
+    printf("    jmp .Lcontinue%d\n", loop_seq-1);
+    return;
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         return gen_return(node);
@@ -548,6 +555,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_BREAK) {
         return gen_break(node);
+    }
+
+    if (node->ty == ND_CONTINUE) {
+        return gen_continue(node);
     }
 
     if (node->ty == ND_BLOCK) {
