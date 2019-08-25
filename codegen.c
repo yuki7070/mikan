@@ -3,7 +3,8 @@
 #include <string.h>
 #include "mikan.h"
 
-int jump_count = 0;
+int jump_seq = 0;
+int loop_seq = 0;
 
 Node *var_info(Node *parent, Node *node);
 
@@ -153,8 +154,7 @@ void gen_return(Node *node) {
 }
 
 void gen_if(Node *node) {
-    int j1 = jump_count++;
-    int j2 = jump_count++;
+    int seq = jump_seq++;
 
     gen(node->cond);
 
@@ -165,45 +165,44 @@ void gen_if(Node *node) {
     printf("    cmp rax, 0\n");
     
     if (node->els) {
-        printf("    je  .Lelse%d\n", j1);
+        printf("    je  .Lelse%d\n", seq);
         for (int j = 0; j < then->len; j++) {
             gen(then->data[j]);
             printf("    pop rax\n");
         }
-        printf("    jmp  .Lend%d\n", j2);
-        printf(".Lelse%d:\n", j1);
+        printf("    jmp  .Lend%d\n", seq);
+        printf(".Lelse%d:\n", seq);
         for (int j = 0; j < els->len; j++) {
             gen(els->data[j]);
             printf("    pop rax\n");
         }
     } else {
-        printf("    je  .Lend%d\n", j2);
+        printf("    je  .Lend%d\n", seq);
         for (int j = 0; j < then->len; j++) {
             gen(then->data[j]);
             printf("    pop rax\n");
         }
     }
-    printf(".Lend%d:\n", j2);
+    printf(".Lend%d:\n", seq);
     printf("    push rax\n");
     
     return;
 }
 
 void gen_for(Node *node) {
-    int j1 = jump_count++;
-    int j2 = jump_count++;
+    int seq = loop_seq++;
 
     Vector *loop = node->loop;
 
     if (node->init) {
         gen(node->init);
     }
-    printf(".Lbegin%d:\n", j1);
+    printf(".Lbegin%d:\n", seq);
     if (node->cond) {
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", j2);
+        printf("    je .Lend%d\n", seq);
     }
 
     for (int j = 0; j < loop->len; j++) {
@@ -216,24 +215,23 @@ void gen_for(Node *node) {
         printf("    pop rax\n");
     }
 
-    printf("    jmp .Lbegin%d\n", j1);
-    printf(".Lend%d:\n", j2);
+    printf("    jmp .Lbegin%d\n", seq);
+    printf(".Lend%d:\n", seq);
     printf("    push rax\n");
     return;
 }
 
 void gen_while(Node *node) {
-    int j1 = jump_count++;
-    int j2 = jump_count++;
+    int seq = loop_seq++;
 
     Vector *loop = node->loop;
 
-    printf(".Lbegin%d:\n", j1);
+    printf(".Lbegin%d:\n", seq);
     if (node->cond) {
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", j2);
+        printf("    je .Lend%d\n", seq);
     }
 
     for (int j = 0; j < loop->len; j++) {
@@ -241,8 +239,8 @@ void gen_while(Node *node) {
         printf("    pop rax\n");
     }
 
-    printf("    jmp .Lbegin%d\n", j1);
-    printf(".Lend%d:\n", j2);
+    printf("    jmp .Lbegin%d\n", seq);
+    printf(".Lend%d:\n", seq);
     printf("    push rax\n");
     return;
 }
@@ -439,40 +437,38 @@ void gen_string(Node *node) {
 }
 
 void gen_logic_and(Node *node) {
-    int j1 = jump_count++;
-    int j2 = jump_count++;
+    int seq = jump_seq++;
     gen(node->lhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    je .Lfalse%d\n", j1);
+    printf("    je .Lfalse%d\n", seq);
     gen(node->rhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    je .Lfalse%d\n", j1);
+    printf("    je .Lfalse%d\n", seq);
     printf("    push 1\n");
-    printf("    jmp .Lend%d\n", j2);
-    printf(".Lfalse%d:\n", j1);
+    printf("    jmp .Lend%d\n", seq);
+    printf(".Lfalse%d:\n", seq);
     printf("    push 0\n");
-    printf(".Lend%d:\n", j2);
+    printf(".Lend%d:\n", seq);
     return;
 }
 
 void gen_logic_or(Node *node) {
-    int j1 = jump_count++;
-    int j2 = jump_count++;
+    int seq = jump_seq++;
     gen(node->lhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    jne .Ltrue%d\n", j1);
+    printf("    jne .Ltrue%d\n", seq);
     gen(node->rhs);
     printf("    pop rax\n");
     printf("    cmp rax, 0\n");
-    printf("    jne .Ltrue%d\n", j1);
+    printf("    jne .Ltrue%d\n", seq);
     printf("    push 0\n");
-    printf("    jmp .Lend%d\n", j2);
-    printf(".Ltrue%d:\n", j1);
+    printf("    jmp .Lend%d\n", seq);
+    printf(".Ltrue%d:\n", seq);
     printf("    push 1\n");
-    printf(".Lend%d:\n", j2);
+    printf(".Lend%d:\n", seq);
     return;
 }
 
