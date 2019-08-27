@@ -113,7 +113,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},&[]", *p)) {
+        if (strchr("+-*/()<>=;:{},&[]", *p)) {
             add_token(tokens, *p, p);
             i++;
             p++;
@@ -204,6 +204,20 @@ Vector *tokenize() {
             add_token(tokens, TK_CONTINUE, p);
             i++;
             p += 8;
+            continue;
+        }
+
+        if (strncmp(p, "switch", 6) == 0 && !is_alnum(p[6])) {
+            add_token(tokens, TK_SWITCH, p);
+            i++;
+            p += 6;
+            continue;
+        }
+
+        if (strncmp(p, "case", 4) == 0 && !is_alnum(p[4])) {
+            add_token(tokens, TK_CASE, p);
+            i++;
+            p += 4;
             continue;
         }
 

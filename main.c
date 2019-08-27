@@ -53,8 +53,8 @@ int main(int argc, char **argv) {
     identities = new_map();
     functions = new_map();
     char_literals = new_vector();
-
     tokens = tokenize();
+
     program();
 
     printf(".intel_syntax noprefix\n");

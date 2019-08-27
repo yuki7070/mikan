@@ -68,6 +68,8 @@ typedef struct Node {
     struct Type *type;
 
     struct Node *index;
+    struct Vector *deflt;
+    struct Vector *cases;
 } Node;
 
 typedef struct Type {
@@ -109,7 +111,10 @@ enum {
     ND_GNODE,
     ND_STR,
     ND_BREAK,
-    ND_CONTINUE
+    ND_CONTINUE,
+    ND_SWITCH,
+    ND_CASE,
+    ND_DEFAULT
 };
 
 Node *code[100];
@@ -151,6 +156,9 @@ enum {
     TK_SIZEOF,
     TK_BREAK,
     TK_CONTINUE,
+    TK_SWITCH,
+    TK_CASE,
+    TK_DEFAULT,
     TK_EOF,
 };
 

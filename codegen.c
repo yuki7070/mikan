@@ -500,6 +500,52 @@ void gen_continue(Node *node) {
     return;
 }
 
+void gen_switch(Node *node) {
+    int seq = jump_seq++;
+    int l_seq = loop_seq++;
+    int tmp_break = break_pnt;
+    break_pnt = l_seq;
+
+    gen(node->cond);
+    Vector *then = node->then;
+    if (then->len > 0) {
+        for (int j; j < then->len; j++) {
+            gen(then->data[j]);
+        }
+    }
+
+    Vector *cases = node->cases;
+    Vector *blocks = node->block;
+    for (int j = 0; j < cases->len; j++) {
+        printf(".LLcase%d_%d:\n", seq, j);
+        gen(cases->data[j]);
+        printf("    pop rdi\n");
+        printf("    pop rax\n");
+        printf("    push rax\n");
+        printf("    cmp rax, rdi\n");
+        printf("    sete al\n");
+        printf("    movzb rax, al\n");
+        printf("    push rax\n");
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+        if (j == cases->len - 1) {
+            printf("    pop rax\n");
+            printf("    je .Lend%d\n", l_seq);
+        } else {
+            printf("    je .LLcase%d_%d\n", seq, j+1);
+        }
+        Vector *block = blocks->data[j];
+        for (int n = 0; n < block->len; n++) {
+            gen(block->data[n]);
+        }
+    }
+    printf(".Lend%d:\n", l_seq);
+
+    break_pnt = tmp_break;
+
+    return;
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         return gen_return(node);
@@ -575,6 +621,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_CONTINUE) {
         return gen_continue(node);
+    }
+
+    if (node->ty == ND_SWITCH) {
+        return gen_switch(node);
     }
 
     if (node->ty == ND_BLOCK) {

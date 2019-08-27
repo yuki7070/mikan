@@ -579,6 +579,72 @@ Node *parse_continue(Node *parent) {
     return node;
 }
 
+Node *parse_switch(Node *parent) {
+    if (!consume(TK_SWITCH))
+        return NULL;
+
+    if (!consume('(')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "'('ではないトークンです");
+    }
+
+    Node *node = malloc(sizeof(Node));
+    node->ty = ND_SWITCH;
+    node->idents = new_map();
+    node->funcs = new_map();
+    node->then = new_vector();
+    node->cases = new_vector();
+    node->block = new_vector();
+    node->parent = parent;
+    node->offset = 0;
+
+    node->cond = expr(node);
+
+    if (!consume(')')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "')'ではないトークンです");
+    }
+
+    if (!consume('{')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "'{'ではないトークンです");
+    }
+
+    int first = 1;
+    int end = 0;
+
+    while (!consume('}')) {
+        if (first == 1 && !consume(TK_CASE)) {
+            while (!consume(TK_CASE)) {
+                vec_push(node->then, stmt(node));
+            }
+        }
+        first = 0;
+        vec_push(node->cases, expr(node));
+        if (!consume(':')) {
+            Token *t = tokens->data[pos];
+            error_at(t->input, "':'ではないトークンです");
+        }
+
+        Vector *vec = new_vector();
+
+        while (!consume(TK_CASE)) {
+            vec_push(vec, stmt(node));
+            if (consume('}')) {
+                end = 1;
+                break;
+            }
+        }
+
+        vec_push(node->block, vec);
+        
+        if (end)
+            break;
+    }
+
+    return node;
+}
+
 void program() {
     int i = 0;
     global_node = malloc(sizeof(Node));
@@ -619,6 +685,9 @@ Node *stmt(Node *parent) {
     if ((node = parse_continue(parent)) != NULL)
         return node;
 
+    if ((node = parse_switch(parent)) != NULL)
+        return node;
+
     if (consume('{')) {
         node = malloc(sizeof(Node));
         node->ty = ND_BLOCK;
@@ -633,8 +702,10 @@ Node *stmt(Node *parent) {
 
     node = expr(parent);
 
-    if (node->ty != ND_DFUNC && !consume(';')) {
+    
+    if (!consume(';')) {
         Token *t = tokens->data[pos];
+        printf("type: %d\n", node->ty);
         error_at(t->input, "';'ではないトークンです");
     }
 
