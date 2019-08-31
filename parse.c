@@ -7,6 +7,7 @@ int pos = 0;
 int str = 0;
 
 Node *function();
+Node *global_stmt(Node *parent);
 Node *stmt(Node *parent);
 Node *expr(Node *parent);
 Node *assign(Node *parent);
@@ -22,21 +23,27 @@ Node *init_func_arg(Node *parent);
 
 int new_func(Node *parent, Node *node);
 
+Node *search_type(Node *parent, char *name) {
+    if (map_exists(parent->type_map, name)) {
+        return map_get(parent->type_map, name);
+    } else if (parent->parent) {
+        return search_type(parent->parent, name);
+    }
+    return NULL;
+}
+
 int get_size(Node *node) {
     int s = 0;
+    Node *n = malloc(sizeof(Node));
     switch (node->type->ty) {
         case TY_INT:
             return 4;
-            break;
         case TY_CHAR:
             return 1;
-            break;
         case TY_PTR:
             return 8;
-            break;
         case TY_VOID:
             return 0;
-            break;
         case TY_ARRAY:
             switch (node->type->ptr_to->ty) {
             case TY_CHAR:
@@ -53,7 +60,9 @@ int get_size(Node *node) {
                 break;
             }
             return node->type->array_size * s;
-            break;
+        case TY_TYPEDEF:
+            n = search_type(node->parent, node->type->name);
+            return get_size(n);
         default:
             return -1;
     }
@@ -109,6 +118,7 @@ int new_decl_func(Node *parent, Node *node) {
     node->block = new_vector();
     node->idents = new_map();
     node->funcs = new_map();
+    node->type_map = new_map();
     node->offset = 0;
 
     while (!consume(')')) {
@@ -158,17 +168,19 @@ int new_decl_var(Node *parent, Node *node) {
     return 1;
 }
 
-Node *init_type() {
+Node *init_type(Node *parent) {
     int ty;
 
+    Token *type_token = tokens->data[pos-1];
     if (consume(TK_INT)) {
         ty = TY_INT;
     } else if (consume(TK_CHAR)) {
         ty = TY_CHAR;
     } else if (consume(TK_VOID)) {
         ty = TY_VOID;
+    } else if (search_type(parent, type_token->name)) {
+        ty = TY_TYPEDEF;
     } else {
-        //未定義の型
         return NULL;
     }
 
@@ -182,6 +194,8 @@ Node *init_type() {
 
     Type *t = malloc(sizeof(Type));
     t->ty = ty;
+    if (ty == TY_TYPEDEF)
+        t->name = type_token->name;
 
     if (node->type != NULL) {
         node->type->ptr_to = t;
@@ -245,7 +259,7 @@ Node *init_func_arg(Node *parent) {
 
     if (!consume(TK_TYPE))
         return NULL;
-    Node *node = init_type();
+    Node *node = init_type(parent);
     node = init_func_ident(parent, node);
 
     node->ty = ND_DVAR;
@@ -277,9 +291,15 @@ Node *init_func_arg(Node *parent) {
 }
 
 Node *parse_decl(Node *parent) {
-    if (!consume(TK_TYPE))
+    if (!consume(TK_IDENT) && !consume(TK_TYPE)) {
         return NULL;
-    Node *node = init_type();
+    }
+    consume(TK_TYPE);
+    Node *node = init_type(parent);
+    if (node == NULL) {
+        pos--;
+        return NULL;
+    }
     node = init_ident(parent, node);
     
     if (new_decl_func(parent, node) == 1) {
@@ -377,6 +397,7 @@ Node *parse_if(Node *parent) {
     node->then = new_vector();
     node->idents = new_map();
     node->funcs = new_map();
+    node->type_map = new_map();
     node->parent = parent;
     node->offset = 0;
 
@@ -422,6 +443,7 @@ Node *parse_for(Node *parent) {
     node->loop = new_vector();
     node->idents = new_map();
     node->funcs = new_map();
+    node->type_map = new_map();
     node->parent = parent;
     node->offset = 0;
     
@@ -472,6 +494,7 @@ Node *parse_while(Node *parent) {
     node->loop = new_vector();
     node->idents = new_map();
     node->funcs = new_map();
+    node->type_map = new_map();
     node->parent = parent;
     node->offset = 0;
 
@@ -592,6 +615,7 @@ Node *parse_switch(Node *parent) {
     node->ty = ND_SWITCH;
     node->idents = new_map();
     node->funcs = new_map();
+    node->type_map = new_map();
     node->then = new_vector();
     node->cases = new_vector();
     node->block = new_vector();
@@ -637,9 +661,42 @@ Node *parse_switch(Node *parent) {
         }
 
         vec_push(node->block, vec);
-        
         if (end)
             break;
+    }
+
+    return node;
+}
+
+Node *parse_typedef(Node *parent) {
+    if (!consume(TK_TYPEDEF))
+        return NULL;
+
+    if (!consume(TK_TYPE)) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "型ではないトークンです");
+    }
+
+    Node *node = init_type(parent);
+
+    //define type
+    if (!consume(TK_IDENT)) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "だめ");
+    }
+
+    Token *t = tokens->data[pos-1];
+    node->name = t->name;
+    node->token = t;
+    node->parent = parent;
+
+    node->ty = ND_TYPEDEF;
+
+    map_put(parent->type_map, node->name, node);
+
+    if (!consume(';')) {
+        Token *t = tokens->data[pos];
+        error_at(t->input, "':'ではないトークンです");
     }
 
     return node;
@@ -650,14 +707,27 @@ void program() {
     global_node = malloc(sizeof(Node));
     global_node->idents = new_map();
     global_node->funcs = new_map();
+    global_node->type_map = new_map();
     global_node->ty = ND_GNODE;
     while (!consume(TK_EOF)) {
-        code[i++] = parse_decl(global_node);
+        code[i++] = global_stmt(global_node);
     }
 
     code[i] = NULL;
 
     return;
+}
+
+Node *global_stmt(Node *parent) {
+    Node *node;
+    if ((node = parse_decl(parent)) != NULL)
+        return node;
+
+    if ((node = parse_typedef(parent)) != NULL)
+        return node;
+
+    Token *t = tokens->data[pos];
+    error_at(t->input, "知らない子だねぇ");
 }
 
 Node *stmt(Node *parent) {
@@ -686,6 +756,9 @@ Node *stmt(Node *parent) {
         return node;
 
     if ((node = parse_switch(parent)) != NULL)
+        return node;
+
+    if ((node = parse_typedef(parent)) != NULL)
         return node;
 
     if (consume('{')) {

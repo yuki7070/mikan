@@ -59,6 +59,8 @@ int type_size(int ty) {
         return 8;
     case TY_VOID:
         return 0;
+    case TY_TYPEDEF:
+        return 0;
     }
     return 0;
 }
@@ -119,7 +121,7 @@ int node_type(Node *node) {
 
     if (node->ty == ND_LVAR) {
         n = var_info(node->parent, node);
-        return type_size(n->type->ty);
+        return get_size(n);
     }
 }
 
@@ -546,6 +548,14 @@ void gen_switch(Node *node) {
     return;
 }
 
+void gen_typedef(Node *node) {
+    if (node->parent->ty == ND_GNODE) {
+        return;
+    }
+    printf("    push rax\n");
+    return;
+}
+
 void gen(Node *node) {
     if (node->ty == ND_RETURN) {
         return gen_return(node);
@@ -625,6 +635,10 @@ void gen(Node *node) {
 
     if (node->ty == ND_SWITCH) {
         return gen_switch(node);
+    }
+
+    if (node->ty == ND_TYPEDEF) {
+        return gen_typedef(node);
     }
 
     if (node->ty == ND_BLOCK) {

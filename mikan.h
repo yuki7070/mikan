@@ -30,7 +30,6 @@ void map_put(Map *map, char *key, void *val);
 void *map_get(Map *map, char *key);
 int map_exists(Map *map, char *key);
 
-
 typedef struct Node {
     int ty;
     struct Node *lhs;
@@ -70,6 +69,8 @@ typedef struct Node {
     struct Node *index;
     struct Vector *deflt;
     struct Vector *cases;
+
+    struct Map *type_map
 } Node;
 
 typedef struct Type {
@@ -79,10 +80,12 @@ typedef struct Type {
         TY_PTR,
         TY_ARRAY,
         TY_VOID,
+        TY_TYPEDEF,
     } ty;
     struct Type *ptr_to;
     int size;
     size_t array_size;
+    char *name;
 } Type;
 
 enum {
@@ -114,7 +117,8 @@ enum {
     ND_CONTINUE,
     ND_SWITCH,
     ND_CASE,
-    ND_DEFAULT
+    ND_DEFAULT,
+    ND_TYPEDEF
 };
 
 Node *code[100];
@@ -159,6 +163,7 @@ enum {
     TK_SWITCH,
     TK_CASE,
     TK_DEFAULT,
+    TK_TYPEDEF,
     TK_EOF,
 };
 

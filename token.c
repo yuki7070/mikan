@@ -113,7 +113,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;:{},&[]", *p)) {
+        if (strchr("+-*/()<>=;:{},&[]#", *p)) {
             add_token(tokens, *p, p);
             i++;
             p++;
@@ -218,6 +218,13 @@ Vector *tokenize() {
             add_token(tokens, TK_CASE, p);
             i++;
             p += 4;
+            continue;
+        }
+        
+        if (strncmp(p, "typedef", 7) == 0 && !is_alnum(p[7])) {
+            add_token(tokens, TK_TYPEDEF, p);
+            i++;
+            p += 7;
             continue;
         }
 
